@@ -50,6 +50,30 @@ AVOID_HISTORY = (
     "muere", "muerte", "muertos", "asesin", "ataque", "batalla", "heridos", "victimas")
 
 
+# "Did you know?" rotates through one theme per day so the box does not keep landing on the same
+# famous trivia. Readers can replace this list with "did_you_know_themes" in config.json.
+DYK_THEMES = [
+    "origin of a programming language", "how a piece of everyday hardware works inside",
+    "history of a file format or protocol", "origin of a computing term (not 'bug')",
+    "a curious record in computing", "early video game history", "how the internet's infrastructure works",
+    "history of a famous algorithm", "cryptography and codes through history", "space missions and their computers",
+    "history of a keyboard key or symbol", "how a common app feature was invented", "storage media history",
+    "a programming convention and where it came from", "history of an operating system",
+    "how GPS, Wi-Fi or Bluetooth works", "computing in your country's history", "open-source software history",
+    "a surprising fact about electricity or batteries", "the science behind a screen technology",
+    "history of artificial intelligence before 2000", "a famous software failure and its lesson",
+    "units and numbers in computing (bytes, hertz, binary)", "the history of email or the web",
+    "an invention that came from a game or a toy", "how data compression works",
+    "history of the mouse, touchscreen or another input device", "a curiosity about databases",
+    "the origin of a tech company's name", "how undersea cables or satellites carry data",
+]
+
+
+def dyk_theme(cfg, day):
+    themes = cfg.get("did_you_know_themes") or DYK_THEMES
+    return themes[day.toordinal() % len(themes)]
+
+
 def tz_of(cfg):
     name = cfg.get("timezone") or "UTC"
     if ZoneInfo:
@@ -310,6 +334,7 @@ def main():
 
     out = {"date": day.isoformat(), "number": reissue or number, "reissue": bool(reissue), "weekend": weekend,
            "window_hours": window, "weather": weather, "news": news, "history": history,
+           "did_you_know_theme": dyk_theme(cfg, day),
            "did_you_know_used": [s for s in used_didyouknow if s][:30], "failures": failures,
            "generated_at": now.isoformat(timespec="minutes")}
     os.makedirs(a.work, exist_ok=True)
@@ -336,8 +361,9 @@ def main():
     print("\n[history]")
     for h in history:
         print(f"{h['id']} | {h['year']} | {h['text']}")
+    print(f"\n[did_you_know] today's theme: {out['did_you_know_theme']}")
     if out["did_you_know_used"]:
-        print("\n[did_you_know already used] " + " / ".join(out["did_you_know_used"][:15]))
+        print("[did_you_know already used] " + " / ".join(out["did_you_know_used"][:15]))
     if failures:
         print("\nFAILURES: " + "; ".join(failures))
     return 0

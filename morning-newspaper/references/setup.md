@@ -23,6 +23,7 @@ Start from `references/config.example.json` and fill in:
 - `wikipedia_lang`: their Wikipedia language code (`pt`, `es`, `en`, …).
 - `sections`: for each topic, an `id` (short, lowercase), a `title` in their language, a `layout` (`main` for the widest section, usually the first; `half` for two short sections shown side by side; `single` for a full-width short section), an `interest` sentence, `count` per weekday/weekend, 2–5 search `queries` in their language (short, no dates) and optional RSS `feeds` (https only).
 - `history_keywords`: 10–20 words in their language for preferred "On this day" topics, based on their interests.
+- `did_you_know_themes` (optional): 20–40 short themes for the "Did you know?" box, tied to their interests, in any language. Leave it out to use the built-in technology themes.
 - `labels`: leave `{}` if `assets/i18n/` has their language (en, pt-BR, es). Otherwise translate every key of `assets/i18n/en.json` (keep the `{placeholders}` and the 7 weekdays / 12 months order).
 
 Never put emails, phone numbers, addresses or anything sensitive in the config. It holds only what the newspaper needs.

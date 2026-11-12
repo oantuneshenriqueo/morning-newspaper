@@ -74,7 +74,7 @@ Use each section's `interest` and `count` from the config:
 - Headline: the story most relevant to the reader today (affects what they do, use or decide).
 - A section with nothing good is left out. Never pad with weak or invented stories.
 - Unverifiable claims (only small outlets, nothing confirms it) are written as "outlets report…", or left out.
-- "On this day": pick one `h` (it comes from Wikipedia, which counts as confirmation). "Did you know?": follow `references/extras.md`.
+- "On this day": pick one `h` (it comes from Wikipedia, which counts as confirmation). "Did you know?": follow today's theme from the collection and `references/extras.md` (never the overused classics listed there).
 
 ### 4. Write the JSON
 
