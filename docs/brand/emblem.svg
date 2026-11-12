@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <pattern id="dots" width="7" height="7" patternUnits="userSpaceOnUse">
+      <circle cx="3.5" cy="3.5" r="1.25" fill="#1E1B16"/>
+    </pattern>
+    <clipPath id="sunclip"><rect x="20" y="20" width="200" height="128"/></clipPath>
+  </defs>
+  <!-- seal -->
+  <rect x="6" y="6" width="228" height="228" fill="#F2E8D5" stroke="#1E1B16" stroke-width="5"/>
+  <rect x="15" y="15" width="210" height="210" fill="none" stroke="#1E1B16" stroke-width="1.6"/>
+  <!-- rising halftone sun -->
+  <g clip-path="url(#sunclip)">
+    <circle cx="120" cy="150" r="78" fill="#C8901E"/>
+    <circle cx="120" cy="150" r="78" fill="url(#dots)" opacity=".28"/>
+    <g stroke="#1E1B16" stroke-width="3" stroke-linecap="round">
+      <path d="M120 50v-18M69 66l-11-14M171 66l11-14M38 104l-16-7M202 104l16-7"/>
+    </g>
+    <circle cx="120" cy="150" r="78" fill="none" stroke="#1E1B16" stroke-width="3"/>
+  </g>
+  <!-- horizon rule -->
+  <path d="M20 148h200" stroke="#1E1B16" stroke-width="3"/>
+  <!-- folded newspaper -->
+  <g transform="translate(50 118) rotate(-6)">
+    <rect x="0" y="0" width="96" height="78" fill="#FBF6EC" stroke="#1E1B16" stroke-width="3"/>
+    <rect x="0" y="0" width="96" height="15" fill="#A8261B" stroke="#1E1B16" stroke-width="3"/>
+    <path d="M10 26h76M10 34h76" stroke="#1E1B16" stroke-width="3"/>
+    <rect x="10" y="42" width="34" height="26" fill="url(#dots)" stroke="#1E1B16" stroke-width="2"/>
+    <path d="M52 45h34M52 53h34M52 61h26" stroke="#1E1B16" stroke-width="2.4"/>
+  </g>
+  <!-- coffee cup -->
+  <g transform="translate(140 150)">
+    <path d="M8 22c6 -8 -6 -12 0 -20M22 22c6 -8 -6 -12 0 -20" fill="none" stroke="#1E1B16" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M0 28h44v20a16 16 0 0 1-16 16h-12a16 16 0 0 1-16-16z" fill="#FBF6EC" stroke="#1E1B16" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M44 34h5a8 8 0 0 1 0 16h-5" fill="none" stroke="#1E1B16" stroke-width="3"/>
+    <path d="M6 38h32" stroke="#A8261B" stroke-width="3"/>
+    <path d="M-8 68h62" stroke="#1E1B16" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

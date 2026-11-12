@@ -1,8 +1,10 @@
-# morning-newspaper
+<p align="center"><img src="docs/brand/banner.png" alt="Morning Newspaper" width="720"></p>
+
+# Morning Newspaper
 
 A Claude skill that delivers a **personal retro morning newspaper**: your agenda, the emails waiting for your reply, the weather and the news you care about, laid out like a 1980s–90s printed daily. Every edition is kept at a private **newsstand** page, so you can flip back through past days.
 
-The default name is **O Jornal Diário**. Rename it to anything you like during setup.
+The default name follows your language (**Morning Newspaper** in English, **O Jornal Matinal** in Portuguese, **El Diario Matinal** in Spanish). Rename it to anything you like during setup.
 
 <p align="center"><img src="docs/example.png" alt="Example edition with fictional content" width="360"></p>
 
@@ -56,6 +58,7 @@ morning-newspaper/            the skill (this folder is what goes in the zip)
 dist/morning-newspaper.zip    ready-to-upload skill
 build-zip.sh                  rebuilds the zip
 docs/example.png              screenshot with fictional content
+docs/brand/                   banner, logo and emblem (SVG)
 ```
 
 ## Contributing

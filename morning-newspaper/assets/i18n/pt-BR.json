@@ -1,6 +1,7 @@
 {
  "_note": "Rótulos da interface em português do Brasil.",
  "html_lang": "pt-BR",
+ "default_newspaper_name": "O Jornal Matinal",
  "weekdays": [
   "Segunda-feira",
   "Terça-feira",

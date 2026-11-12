@@ -15,7 +15,7 @@ Use the session's artifact tools: list artifacts, get an artifact's state (versi
 
 ## Finding the newsstand
 1. If the request or the scheduled task prompt has the newsstand slug, use it.
-2. Otherwise list the reader's artifacts and look for one whose files include `editions/index.json` (check the most likely titles first: the newspaper name followed by " · " and the newsstand label, e.g. "O Jornal Diário · Banca").
+2. Otherwise list the reader's artifacts and look for one whose files include `editions/index.json` (check the most likely titles first: the newspaper name followed by " · " and the newsstand label, e.g. "O Jornal Matinal · Banca").
 3. More than one: use the most recent and, in an interactive session, say so in one line.
 4. None: this is a first run → `references/setup.md`.
 
@@ -23,7 +23,7 @@ Then read `config.json` and `editions/index.json` from it into `WORK/config.json
 
 ## Creating the newsstand (first time only)
 1. Run `assemble.py` without `--index`. It writes `index.html`, `config.json`, `editions/index.json` and today's edition into `WORK/archive/` and prints "NEW NEWSSTAND".
-2. Publish them in one call, from disk, creating the artifact with the title "<newspaper name> · <archive_title label>" (e.g. "O Jornal Diário · Newsstand") and the icon "newspaper".
+2. Publish them in one call, from disk, creating the artifact with the title "<newspaper name> · <archive_title label>" (e.g. "Morning Newspaper · Newsstand") and the icon "newspaper".
 3. In an interactive session, tell the reader the newsstand was created and give the slug, to put in the scheduled task prompt.
 
 ## Adding today's edition

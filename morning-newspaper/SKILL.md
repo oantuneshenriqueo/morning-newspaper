@@ -5,7 +5,7 @@ description: "Builds today's edition of a personal retro morning newspaper (1980
 
 # Morning Newspaper
 
-A personal newspaper delivered every morning, readable in five minutes with a coffee. It brings together the reader's day (agenda, emails waiting for a reply, weather) and the news they care about, laid out like a 1980s–90s printed newspaper. Every edition goes to a **newsstand**: a private artifact that keeps all editions by date. The default name is "O Jornal Diário"; each reader can rename it.
+A personal newspaper delivered every morning, readable in five minutes with a coffee. It brings together the reader's day (agenda, emails waiting for a reply, weather) and the news they care about, laid out like a 1980s–90s printed newspaper. Every edition goes to a **newsstand**: a private artifact that keeps all editions by date. The default name follows the reader's language ("Morning Newspaper" in English, "O Jornal Matinal" in Portuguese, "El Diario Matinal" in Spanish: `default_newspaper_name` in `assets/i18n/`); each reader can rename it.
 
 ## Language
 

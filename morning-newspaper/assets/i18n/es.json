@@ -1,6 +1,7 @@
 {
  "_note": "Etiquetas de la interfaz en español.",
  "html_lang": "es",
+ "default_newspaper_name": "El Diario Matinal",
  "weekdays": [
   "Lunes",
   "Martes",

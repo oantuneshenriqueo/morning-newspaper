@@ -1,6 +1,7 @@
 {
  "_note": "UI labels for the edition and archive pages. Copy this file to add a language, or put overrides under 'labels' in config.json.",
  "html_lang": "en",
+ "default_newspaper_name": "Morning Newspaper",
  "weekdays": [
   "Monday",
   "Tuesday",

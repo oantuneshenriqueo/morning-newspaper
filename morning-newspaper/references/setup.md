@@ -8,7 +8,7 @@ Ask only what the conversation or connected tools have not already answered:
 1. What should the newspaper call you? (first name or nickname)
 2. Which city should the weather and local news cover?
 3. Which topics do you want? Offer the defaults in `config.example.json` as a starting point (technology/AI/security, local news, personal finance, games) and let them add, remove or rename sections.
-4. Newspaper name: keep "O Jornal Diário" or choose another?
+4. Newspaper name: keep the default for their language (`default_newspaper_name` in `assets/i18n/`, e.g. "Morning Newspaper", "O Jornal Matinal") or choose another?
 5. What time should the paper be ready? (for the daily schedule; default 7:00)
 
 The language is the one they are writing in; confirm it only if it is unclear.

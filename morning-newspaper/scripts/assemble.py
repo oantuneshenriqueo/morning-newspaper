@@ -318,7 +318,7 @@ def main():
 
     now = dt.datetime.now(tz)
     text_h = (h.get("text") or "").strip()
-    news_name = (cfg.get("newspaper") or {}).get("name") or "O Jornal Diário"
+    news_name = (cfg.get("newspaper") or {}).get("name") or L["default_newspaper_name"]
     ctx = {
         "HTML_LANG": L["html_lang"], "NEWSPAPER": news_name, "MOTTO": (cfg.get("newspaper") or {}).get("motto", ""),
         "YEAR_ROMAN": roman(year_n), "NUMBER_3": f"{number:03d}", "DATE_LONG": fmt_date(L["date_format"]),

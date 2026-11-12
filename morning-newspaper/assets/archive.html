@@ -38,7 +38,7 @@ a.edicao:hover,a.edicao:focus-visible{outline:3px solid var(--claro);outline-off
 <main class="banca">
 <header class="toldo">
 <div class="sc" id="kicker">Newspaper stand</div>
-<div class="nome display" id="nome">O Jornal Diário</div>
+<div class="nome display" id="nome">Morning Newspaper</div>
 <div class="sub" id="sub">Every edition, kept by date</div>
 </header>
 <div id="hoje"></div>
@@ -111,7 +111,7 @@ a.edicao:hover,a.edicao:focus-visible{outline:3px solid var(--claro);outline-off
       data = data || {};
       var labels = data.labels || {};
       Object.keys(labels).forEach(function (k) { if (labels[k] != null) L[k] = labels[k]; });
-      var name = data.newspaper || data.jornal || "O Jornal Diário";
+      var name = data.newspaper || data.jornal || "Morning Newspaper";
       apply(name);
       var list = Array.isArray(data.editions) ? data.editions.slice() : (Array.isArray(data.edicoes) ? data.edicoes.slice() : []);
       list.sort(function (a, b) { return String(pick(b, "date", "data")).localeCompare(String(pick(a, "date", "data"))); });
