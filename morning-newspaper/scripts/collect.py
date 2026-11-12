@@ -1,0 +1,347 @@
+#!/usr/bin/env python3
+"""Automatic news-gathering for the morning-newspaper skill.
+
+In one pass, without spending model tokens, it fetches:
+  - candidate stories per section (Google News RSS searches + direct RSS feeds from config.json),
+    already filtered by date window and with stories from past editions removed;
+  - today's weather forecast (wttr.in, with Open-Meteo as a fallback);
+  - "On this day" candidates (Wikipedia, in the reader's language when available).
+
+It writes everything to WORK/collected.json (used later by assemble.py) and prints a compact
+summary with a short ID per story (a1, b3, ...; h1... for history), which is what the model reads.
+
+Standard library only. Only performs read-only GET requests to the hosts listed in the config
+and to wttr.in, api.open-meteo.com and *.wikipedia.org. Only writes inside WORK.
+
+Usage:
+  python3 collect.py --config config.json --work WORK_DIR [--index index.json] [--date YYYY-MM-DD]
+"""
+import argparse
+import concurrent.futures as cf
+import datetime as dt
+import email.utils
+import html
+import json
+import os
+import re
+import sys
+import time
+import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:  # pragma: no cover
+    ZoneInfo = None
+
+UA = "morning-newspaper/3.0 (personal newspaper; RSS reader)"
+TIMEOUT = 12
+MAX_BYTES = 5_000_000
+# History events to skip (wars, deaths, disasters) in en / pt / es, matched on accent-free lowercase text.
+AVOID_HISTORY = (
+    "war", "kill", "dead", "death", "dies", "died", "massacre", "murder", "bomb", "earthquake", "crash",
+    "attack", "terror", "genocide", "battle", "invade", "invasion", "shooting", "explosion", "fire ",
+    "guerra", "morre", "morte", "mortos", "mortas", "morreu", "matando", "ataque", "assassin", "bomba",
+    "terremoto", "sismo", "acidente", "atentado", "execu", "genoc", "batalha", "invas", "invad",
+    "feridos", "vitimas", "naufrag", "explos", "incendio", "caiu", "cai no", "cai em", "sequestr",
+    "muere", "muerte", "muertos", "asesin", "ataque", "batalla", "heridos", "victimas")
+
+
+def tz_of(cfg):
+    name = cfg.get("timezone") or "UTC"
+    if ZoneInfo:
+        try:
+            return ZoneInfo(name)
+        except Exception:
+            pass
+    return dt.timezone.utc
+
+
+def fetch(url, tries=2):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+    for n in range(tries):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                return r.read(MAX_BYTES)
+        except urllib.error.HTTPError as e:
+            if n + 1 >= tries or e.code not in (429, 500, 502, 503, 504):
+                raise
+            time.sleep(2 + 2 * n)
+
+
+def words(txt):
+    txt = unicodedata.normalize("NFKD", txt or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9 ]+", " ", txt).split()
+
+
+def clean(txt, limit=220):
+    txt = html.unescape(re.sub(r"<[^>]+>", " ", txt or ""))
+    txt = re.sub(r"\s+", " ", txt).strip()
+    return txt if len(txt) <= limit else txt[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
+def same_story(a, b):
+    """Two titles tell the same story if they share most of their meaningful words."""
+    pa = {p for p in words(a) if len(p) > 3}
+    pb = {p for p in words(b) if len(p) > 3}
+    if not pa or not pb:
+        return False
+    return len(pa & pb) / min(len(pa), len(pb)) >= 0.6
+
+
+# ---------------------------------------------------------------- news
+
+def google_news_url(query, days, loc):
+    return "https://news.google.com/rss/search?" + urllib.parse.urlencode(
+        {"q": f"{query} when:{days}d", "hl": loc.get("hl", "en-US"), "gl": loc.get("gl", "US"),
+         "ceid": loc.get("ceid", "US:en")})
+
+
+def read_rss(url):
+    root = ET.fromstring(fetch(url))
+    items = []
+    for it in root.iter("item"):
+        title = clean(it.findtext("title"), 300)
+        link = (it.findtext("link") or "").strip()
+        src = it.find("source")
+        outlet = (src.text or "").strip() if src is not None else ""
+        if outlet and title.endswith(" - " + outlet):  # Google News appends " - Outlet"
+            title = title[: -len(" - " + outlet)]
+        if not outlet:
+            outlet = urllib.parse.urlparse(link).netloc.replace("www.", "")
+        when = None
+        if it.findtext("pubDate"):
+            try:
+                when = email.utils.parsedate_to_datetime(it.findtext("pubDate"))
+                if when.tzinfo is None:
+                    when = when.replace(tzinfo=dt.timezone.utc)
+            except Exception:
+                when = None
+        summary = clean(it.findtext("description"), 160)
+        if summary and same_story(summary, title):
+            summary = ""  # Google News descriptions usually repeat the title
+        if title and link.startswith("https://"):
+            items.append({"title": title, "outlet": outlet, "url": link, "date": when, "summary": summary})
+    return items
+
+
+def prefixes(sections):
+    letters = [c for c in "abcdefgijklmnopqrstuvwxyz"]  # 'h' is reserved for history
+    return {s["id"]: letters[i % len(letters)] for i, s in enumerate(sections)}
+
+
+def collect_news(cfg, window_h, now, used_links, used_titles, tz):
+    days = max(1, round(window_h / 24))
+    loc = cfg.get("news_locale") or {}
+    tasks = []
+    for sec in cfg["sections"]:
+        for q in sec.get("queries", []):
+            tasks.append((sec["id"], google_news_url(q, days, loc)))
+        for f in sec.get("feeds", []):
+            if str(f).startswith("https://"):
+                tasks.append((sec["id"], f))
+    raw = {s["id"]: [] for s in cfg["sections"]}
+    failures = []
+    with cf.ThreadPoolExecutor(max_workers=8) as ex:
+        fut = {ex.submit(read_rss, u): (sid, u) for sid, u in tasks}
+        for f in cf.as_completed(fut):
+            sid, u = fut[f]
+            try:
+                raw[sid].extend(f.result())
+            except Exception as e:
+                failures.append(f"{sid}: {urllib.parse.urlparse(u).netloc} ({type(e).__name__})")
+    cutoff = now - dt.timedelta(hours=window_h)
+    pre = prefixes(cfg["sections"])
+    out = {}
+    for sec in cfg["sections"]:
+        sid = sec["id"]
+        kept = []
+        for it in sorted(raw[sid], key=lambda x: x["date"] or cutoff, reverse=True):
+            if it["date"] is None or it["date"] < cutoff or it["url"] in used_links:
+                continue
+            if any(same_story(it["title"], t) for t in used_titles):
+                continue
+            if any(same_story(it["title"], k["title"]) for k in kept):
+                continue
+            kept.append(it)
+            if len(kept) >= sec.get("max_candidates", 10):
+                break
+        out[sid] = [{"id": f"{pre[sid]}{i}", "title": it["title"], "outlet": it["outlet"], "url": it["url"],
+                     "date": it["date"].astimezone(tz).strftime("%Y-%m-%d %H:%M"), "summary": it["summary"]}
+                    for i, it in enumerate(kept, 1)]
+    return out, failures
+
+
+# ---------------------------------------------------------------- weather
+
+def icon_from_text(t):
+    t = " ".join(words(t))
+    if any(k in t for k in ("thunder", "trovoad", "tempestade", "tormenta")):
+        return "storm"
+    if any(k in t for k in ("rain", "drizzle", "shower", "chuv", "garoa", "lluvia", "llovizna")):
+        return "rain"
+    if any(k in t for k in ("partly", "parcial", "poucas nuvens", "parcialmente")):
+        return "sun-cloud"
+    if any(k in t for k in ("cloud", "overcast", "fog", "mist", "nubl", "encoberto", "nuvens", "nevoeiro",
+                            "neblina", "nublado", "niebla")):
+        return "cloud"
+    return "sun"
+
+
+WMO = {0: ("Clear sky", "sun"), 1: ("Mainly clear", "sun-cloud"), 2: ("Partly cloudy", "sun-cloud"),
+       3: ("Overcast", "cloud"), 45: ("Fog", "cloud"), 48: ("Fog", "cloud"), 51: ("Drizzle", "rain"),
+       53: ("Drizzle", "rain"), 55: ("Heavy drizzle", "rain"), 61: ("Light rain", "rain"), 63: ("Rain", "rain"),
+       65: ("Heavy rain", "rain"), 80: ("Rain showers", "rain"), 81: ("Rain showers", "rain"),
+       82: ("Heavy showers", "rain"), 95: ("Thunderstorms", "storm"), 96: ("Thunderstorms with hail", "storm"),
+       99: ("Thunderstorms with hail", "storm")}
+
+
+def weather_wttr(city, lang):
+    name = urllib.parse.quote(city["name"].replace(" ", "+"), safe="+")
+    d = json.loads(fetch(f"https://wttr.in/{name}?format=j1&lang={lang}"))
+    today = d["weather"][0]
+    noon = today["hourly"][min(4, len(today["hourly"]) - 1)]
+    cond = (noon.get(f"lang_{lang}") or [{}])[0].get("value") or noon["weatherDesc"][0]["value"]
+    rain = max(int(h.get("chanceofrain", 0)) for h in today["hourly"])
+    return {"max": int(today["maxtempC"]), "min": int(today["mintempC"]), "condition": cond.strip().capitalize(),
+            "rain_chance": rain, "icon": icon_from_text(cond), "url": "https://wttr.in/" + name,
+            "condition_lang": lang if noon.get(f"lang_{lang}") else "en"}
+
+
+def weather_open_meteo(city, tzname):
+    q = urllib.parse.urlencode({"latitude": city["latitude"], "longitude": city["longitude"],
+                                "daily": "temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max",
+                                "timezone": tzname, "forecast_days": 1})
+    d = json.loads(fetch("https://api.open-meteo.com/v1/forecast?" + q))["daily"]
+    cond, ic = WMO.get(int(d["weathercode"][0]), ("Variable", "sun-cloud"))
+    return {"max": round(d["temperature_2m_max"][0]), "min": round(d["temperature_2m_min"][0]), "condition": cond,
+            "rain_chance": d.get("precipitation_probability_max", [None])[0], "icon": ic,
+            "url": "https://open-meteo.com/", "condition_lang": "en"}
+
+
+def collect_weather(cfg):
+    city = cfg.get("city") or {}
+    if not city.get("name"):
+        return None, ["weather: no city in config"]
+    lang = (cfg.get("language") or "en").split("-")[0]
+    errors = []
+    try:
+        return weather_wttr(city, lang), errors
+    except Exception as e:
+        errors.append(f"weather: wttr.in ({type(e).__name__})")
+    if "latitude" in city and "longitude" in city:
+        try:
+            return weather_open_meteo(city, cfg.get("timezone") or "UTC"), errors
+        except Exception as e:
+            errors.append(f"weather: open-meteo ({type(e).__name__})")
+    return None, errors
+
+
+# ---------------------------------------------------------------- on this day
+
+def collect_history(day, cfg, used):
+    lang = re.sub(r"[^a-z]", "", (cfg.get("wikipedia_lang") or (cfg.get("language") or "en").split("-")[0]).lower()) or "en"
+    url = f"https://{lang}.wikipedia.org/api/rest_v1/feed/onthisday/events/{day:%m}/{day:%d}"
+    d = json.loads(fetch(url))
+    pref = [" ".join(words(p)) for p in cfg.get("history_keywords", [])]
+    used_n = [" ".join(words(u)) for u in used if u]
+    cands = []
+    for ev in d.get("events", []):
+        txt = clean(ev.get("text", ""), 260)
+        n = " ".join(words(txt))
+        if not txt or any(x in n for x in AVOID_HISTORY):
+            continue
+        if any(u and (n in u or u in n or same_story(n, u)) for u in used_n):
+            continue
+        page = (ev.get("pages") or [{}])[0]
+        link = ((page.get("content_urls") or {}).get("desktop") or {}).get("page", "")
+        cands.append({"year": ev.get("year"), "text": txt, "url": link,
+                      "score": sum(1 for p in pref if p and p in n)})
+    cands.sort(key=lambda c: (-c["score"], -(c["year"] or 0)))
+    return [{"id": f"h{i}", **{k: v for k, v in c.items() if k != "score"}} for i, c in enumerate(cands[:6], 1)]
+
+
+# ---------------------------------------------------------------- main
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--config", required=True, help="reader's config.json")
+    ap.add_argument("--work", required=True, help="working folder for this edition")
+    ap.add_argument("--index", help="current editions/index.json from the newsstand, if any")
+    ap.add_argument("--date", help="YYYY-MM-DD (default: today in the reader's timezone)")
+    a = ap.parse_args()
+
+    with open(a.config, encoding="utf-8") as f:
+        cfg = json.load(f)
+    tz = tz_of(cfg)
+    now = dt.datetime.now(tz)
+    day = dt.date.fromisoformat(a.date) if a.date else now.date()
+
+    index = {"editions": []}
+    if a.index and os.path.exists(a.index):
+        with open(a.index, encoding="utf-8") as f:
+            index = json.load(f)
+    editions = index.get("editions") or index.get("edicoes") or []
+    previous = [e for e in editions if (e.get("date") or e.get("data")) != day.isoformat()]
+    used_links = {l for e in previous for l in e.get("links", [])}
+    used_titles = [e.get("headline") or e.get("manchete") or "" for e in previous] + \
+                  [t for e in previous for t in (e.get("titles") or e.get("titulos") or [])]
+    extras = [(e.get("extras") or {}) for e in previous]
+    used_history = [x.get("history") or x.get("historia") or "" for x in extras]
+    used_didyouknow = [x.get("did_you_know") or x.get("voce_sabia") or "" for x in extras]
+
+    weekend = day.weekday() >= 5
+    window = 72 if day.weekday() in (0, 5, 6) else 48
+    number = max([e.get("number") or e.get("numero") or 0 for e in previous] + [0]) + 1
+    reissue = next((e.get("number") or e.get("numero") for e in editions
+                    if (e.get("date") or e.get("data")) == day.isoformat()), None)
+
+    news, failures = collect_news(cfg, window, now, used_links, used_titles, tz)
+    weather, wf = collect_weather(cfg)
+    failures += wf
+    try:
+        history = collect_history(day, cfg, used_history)
+    except Exception as e:
+        history = []
+        failures.append(f"history: wikipedia ({type(e).__name__})")
+
+    out = {"date": day.isoformat(), "number": reissue or number, "reissue": bool(reissue), "weekend": weekend,
+           "window_hours": window, "weather": weather, "news": news, "history": history,
+           "did_you_know_used": [s for s in used_didyouknow if s][:30], "failures": failures,
+           "generated_at": now.isoformat(timespec="minutes")}
+    os.makedirs(a.work, exist_ok=True)
+    with open(os.path.join(a.work, "collected.json"), "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+
+    # Compact summary for the model (no long URLs: assemble.py resolves them by ID)
+    print(f"# {day.isoformat()} ({day.strftime('%A')}) · issue {out['number']}{' (reissue)' if reissue else ''}"
+          f"{' · WEEKEND' if weekend else ''} · window {window}h · language {cfg.get('language', 'en')}")
+    if weather:
+        print(f"WEATHER: {weather['max']}°/{weather['min']}° {weather['condition']} [{weather['condition_lang']}]"
+              f" · rain {weather['rain_chance']}% · icon {weather['icon']}")
+    else:
+        print("WEATHER: unavailable")
+    for sec in cfg["sections"]:
+        print(f"\n[{sec['id']}] {sec['title']}")
+        for n in news.get(sec["id"], []):
+            line = f"{n['id']} | {n['date'][5:]} | {n['outlet']} | {n['title']}"
+            if n["summary"]:
+                line += f" — {n['summary']}"
+            print(line)
+        if not news.get(sec["id"]):
+            print("(nothing new)")
+    print("\n[history]")
+    for h in history:
+        print(f"{h['id']} | {h['year']} | {h['text']}")
+    if out["did_you_know_used"]:
+        print("\n[did_you_know already used] " + " / ".join(out["did_you_know_used"][:15]))
+    if failures:
+        print("\nFAILURES: " + "; ".join(failures))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

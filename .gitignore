@@ -1,0 +1,9 @@
+# Never commit a real reader profile or generated editions
+config.json
+!morning-newspaper/references/config.example.json
+editions/
+archive/
+collected.json
+edition.json
+__pycache__/
+*.pyc

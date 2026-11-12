@@ -1,0 +1,64 @@
+{
+  "_readme": "Example reader profile. The skill builds the real config.json during first-run setup (references/setup.md) and stores it in the reader's private newsstand artifact. Never commit a real config.json to a public repository.",
+  "language": "en",
+  "timezone": "America/Chicago",
+  "reader": {
+    "name": "Alex"
+  },
+  "newspaper": {
+    "name": "O Jornal Diário",
+    "motto": "Yesterday's news, served hot like a good coffee"
+  },
+  "city": {
+    "name": "Springfield",
+    "latitude": 39.7817,
+    "longitude": -89.6501
+  },
+  "news_locale": {
+    "hl": "en-US",
+    "gl": "US",
+    "ceid": "US:en"
+  },
+  "wikipedia_lang": "en",
+  "sections": [
+    {
+      "id": "tech",
+      "title": "Technology, AI & Security",
+      "layout": "main",
+      "interest": "Programming, new AI models and developer tools, serious security flaws, data breaches and online scams.",
+      "count": { "weekday": [2, 3], "weekend": [1, 2] },
+      "queries": ["security vulnerability", "data breach", "new AI model", "developer tools release"],
+      "feeds": []
+    },
+    {
+      "id": "local",
+      "title": "Springfield & Region",
+      "layout": "half",
+      "interest": "City and regional news: traffic, public works, services, events, extreme weather, education.",
+      "count": { "weekday": [1, 2], "weekend": [1, 1] },
+      "queries": ["\"Springfield\" Illinois"],
+      "feeds": []
+    },
+    {
+      "id": "money",
+      "title": "Personal Finance",
+      "layout": "half",
+      "interest": "Interest rates, inflation and what they mean for everyday savers. Facts only, never investment advice.",
+      "count": { "weekday": [1, 2], "weekend": [0, 1] },
+      "queries": ["Federal Reserve interest rates", "inflation CPI"],
+      "feeds": []
+    },
+    {
+      "id": "games",
+      "title": "Games · simulation & sandbox",
+      "layout": "single",
+      "interest": "Simulation and sandbox games: launches, big updates, notable sales.",
+      "count": { "weekday": [1, 1], "weekend": [1, 1] },
+      "queries": ["simulation game update", "sandbox game release"],
+      "feeds": []
+    }
+  ],
+  "total_news": { "weekday": [6, 9], "weekend": [4, 5], "max": 10 },
+  "history_keywords": ["computer", "internet", "software", "video game", "console", "satellite", "launched", "science", "discovery"],
+  "labels": {}
+}

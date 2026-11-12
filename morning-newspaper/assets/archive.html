@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsstand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Arsenal+SC&family=Crimson+Pro:ital,wght@0,400;0,700;1,400&family=Gloock&display=swap" rel="stylesheet">
+<style>
+:root{--papel:#F2E8D5;--claro:#FBF6EC;--velho:#E9DDC4;--tinta:#1E1B16;--verm:#A8261B;--madeira:#3B2A20}
+*{box-sizing:border-box}
+body{margin:0;background:var(--madeira);color:var(--tinta);font-family:"Crimson Pro",Georgia,serif}
+.banca{max-width:760px;margin:0 auto;padding:20px 16px 32px}
+.sc{font-family:"Arsenal SC",Georgia,serif;letter-spacing:1px}
+.display{font-family:"Gloock",Georgia,serif;font-weight:400}
+.toldo{background:var(--verm);color:var(--claro);text-align:center;padding:12px 10px;border:2px solid var(--tinta)}
+.toldo .nome{font-size:clamp(28px,8vw,42px);line-height:1.05}
+.toldo .sub{font-style:italic;font-size:15px}
+a.edicao{display:block;text-decoration:none;color:var(--tinta);border:1.5px solid var(--tinta)}
+a.edicao:hover,a.edicao:focus-visible{outline:3px solid var(--claro);outline-offset:2px}
+.hoje{margin-top:18px;background:var(--papel);padding:12px 14px;border-width:2px}
+.topo{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;border-bottom:1px solid var(--tinta);padding-bottom:3px}
+.hoje .topo span:first-child{color:var(--verm)}
+.hoje .manchete{font-size:24px;line-height:1.12;margin-top:8px}
+.hoje .resumo{font-style:italic;font-size:15px;margin-top:6px}
+.rotulo{color:var(--papel);margin:24px 0 10px;text-align:center;font-size:13px;letter-spacing:2px;border-top:1px solid var(--papel);border-bottom:1px solid var(--papel);padding:3px 0}
+.grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.velha{background:var(--velho);padding:10px 10px 12px;min-height:150px}
+.velha .mini{font-size:13px;text-align:center;margin-top:4px}
+.velha .manchete{font-size:15.5px;font-weight:700;line-height:1.2;margin-top:6px}
+.velha .num{font-size:12.5px;font-style:italic;margin-top:6px;color:#4A3F33}
+.vazio{color:var(--papel);text-align:center;font-style:italic;margin-top:24px}
+@media (min-width:700px){.grade{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<main class="banca">
+<header class="toldo">
+<div class="sc" id="kicker">Newspaper stand</div>
+<div class="nome display" id="nome">O Jornal Diário</div>
+<div class="sub" id="sub">Every edition, kept by date</div>
+</header>
+<div id="hoje"></div>
+<div id="anteriores"></div>
+<p class="vazio" id="aviso" hidden>No editions at the newsstand yet.</p>
+</main>
+<script>
+(function () {
+  // Labels and names come from editions/index.json (written by scripts/assemble.py); English is the fallback.
+  var L = {
+    archive_title: "Newsstand", archive_kicker: "Newspaper stand", archive_subtitle: "Every edition, kept by date",
+    latest_edition: "Latest edition", previous_editions: "Past editions", archive_empty: "No editions at the newsstand yet.",
+    archive_error: "Could not open the newsstand index right now.", weekend_tag: "weekend", issue_label: "No.",
+    months_short: ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."],
+    date_short_format: "{month} {day}, {year}", html_lang: "en"
+  };
+  function dateShort(iso) {
+    var p = String(iso || "").split("-");
+    if (p.length !== 3) return "";
+    var m = (Array.isArray(L.months_short) ? L.months_short : [])[Number(p[1]) - 1] || "";
+    return String(L.date_short_format).replace("{day}", Number(p[2])).replace("{month}", m).replace("{year}", p[0]);
+  }
+  function num(n) { return L.issue_label + " " + String(n || 0).padStart(3, "0"); }
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function safe(path) {
+    return /^edi(coes|tions)\/\d{4}-\d{2}-\d{2}\.html$/.test(path || "") ? path : "#";
+  }
+  function pick(ed, a, b) { return ed[a] != null ? ed[a] : ed[b]; }
+  function latestCard(ed) {
+    var a = el("a", "edicao hoje");
+    a.href = safe(pick(ed, "file", "arquivo"));
+    var top = el("div", "topo sc");
+    top.appendChild(el("span", null, L.latest_edition));
+    top.appendChild(el("span", null, num(pick(ed, "number", "numero")) + " · " + dateShort(pick(ed, "date", "data"))));
+    a.appendChild(top);
+    a.appendChild(el("div", "manchete display", pick(ed, "headline", "manchete")));
+    a.appendChild(el("div", "resumo", pick(ed, "summary", "resumo")));
+    return a;
+  }
+  function oldCard(ed, name) {
+    var a = el("a", "edicao velha");
+    a.href = safe(pick(ed, "file", "arquivo"));
+    var top = el("div", "topo sc");
+    top.appendChild(el("span", null, String(pick(ed, "weekday", "dia_semana") || "").slice(0, 3) + " · " + dateShort(pick(ed, "date", "data"))));
+    a.appendChild(top);
+    a.appendChild(el("div", "mini display", name));
+    a.appendChild(el("div", "manchete", pick(ed, "headline", "manchete")));
+    var weekend = (ed.type === "weekend" || ed.tipo === "fim de semana");
+    a.appendChild(el("div", "num", num(pick(ed, "number", "numero")) + (weekend ? " · " + L.weekend_tag : "")));
+    return a;
+  }
+  function apply(name) {
+    document.documentElement.lang = L.html_lang || "en";
+    document.title = name + " · " + L.archive_title;
+    document.getElementById("nome").textContent = name;
+    document.getElementById("kicker").textContent = L.archive_kicker;
+    document.getElementById("sub").textContent = L.archive_subtitle;
+    document.getElementById("aviso").textContent = L.archive_empty;
+  }
+  function load(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(); return r.json(); });
+  }
+  load("editions/index.json").catch(function () { return load("edicoes/indice.json"); })
+    .then(function (data) {
+      data = data || {};
+      var labels = data.labels || {};
+      Object.keys(labels).forEach(function (k) { if (labels[k] != null) L[k] = labels[k]; });
+      var name = data.newspaper || data.jornal || "O Jornal Diário";
+      apply(name);
+      var list = Array.isArray(data.editions) ? data.editions.slice() : (Array.isArray(data.edicoes) ? data.edicoes.slice() : []);
+      list.sort(function (a, b) { return String(pick(b, "date", "data")).localeCompare(String(pick(a, "date", "data"))); });
+      if (!list.length) { document.getElementById("aviso").hidden = false; return; }
+      document.getElementById("hoje").appendChild(latestCard(list[0]));
+      var rest = list.slice(1);
+      if (!rest.length) return;
+      var box = document.getElementById("anteriores");
+      box.appendChild(el("div", "rotulo sc", L.previous_editions));
+      var grid = el("div", "grade");
+      rest.forEach(function (ed) { grid.appendChild(oldCard(ed, name)); });
+      box.appendChild(grid);
+    })
+    .catch(function () {
+      var w = document.getElementById("aviso");
+      w.textContent = L.archive_error;
+      w.hidden = false;
+    });
+})();
+</script>
+</body>
+</html>

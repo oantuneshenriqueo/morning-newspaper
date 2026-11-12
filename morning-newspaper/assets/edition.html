@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="{{HTML_LANG}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{NEWSPAPER}} · {{DATE_SHORT}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Arsenal+SC&family=Crimson+Pro:ital,wght@0,400;0,700;1,400&family=Gloock&display=swap" rel="stylesheet">
+<style>
+:root{--papel:#F2E8D5;--claro:#FBF6EC;--tinta:#1E1B16;--verm:#A8261B;--azul:#1F4A7A;--most:#C8901E}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:"Crimson Pro",Georgia,serif;font-size:17px;line-height:1.45}
+.pagina{max-width:760px;margin:0 auto;padding:18px 18px 32px}
+.sc{font-family:"Arsenal SC",Georgia,serif;letter-spacing:1px}
+.display{font-family:"Gloock",Georgia,serif;font-weight:400}
+a{color:var(--azul)}a:hover{color:var(--verm)}
+.linha-data{display:flex;justify-content:space-between;gap:8px;font-size:13px;border-bottom:1px solid var(--tinta);padding-bottom:4px}
+.cabeca{text-align:center;padding:12px 0 4px}
+.nome{font-size:clamp(40px,11vw,64px);line-height:1}
+.lema{font-style:italic;font-size:15px;margin-top:4px}
+.fio-duplo{border-top:4px double var(--tinta);border-bottom:1px solid var(--tinta);margin-top:6px}
+.faixa{background:var(--verm);color:var(--claro);text-align:center;font-size:13px;padding:6px 4px;margin-top:3px}
+.quadro{border:1.5px solid var(--tinta);background:var(--claro)}
+.tempo{display:flex;gap:12px;align-items:center;margin-top:14px;padding:10px 12px}
+.tempo .rot{font-size:12px;color:var(--azul)}
+.chapeu{margin-top:20px;font-size:13px;color:var(--verm);letter-spacing:1.5px}
+.manchete{margin:4px 0 6px;font-size:clamp(28px,8vw,40px);line-height:1.08}
+.fina{font-style:italic;font-size:17px;line-height:1.35;margin-bottom:10px}
+.foto{height:160px;border:1px solid var(--tinta);background-color:#E4D8C0;background-image:radial-gradient(var(--tinta) 1px,transparent 1.4px);background-size:6px 6px;display:flex;align-items:center;justify-content:center;position:relative}
+.foto svg{background:var(--claro);border:1.5px solid var(--tinta);padding:10px}
+.foto .leg{position:absolute;left:0;bottom:0;background:var(--claro);font-size:12px;font-style:italic;padding:2px 6px;border-top:1px solid var(--tinta);border-right:1px solid var(--tinta)}
+.texto{text-align:justify;hyphens:auto;margin:10px 0 0}
+.capitular{float:left;font-size:48px;line-height:.8;padding:5px 6px 0 0;color:var(--verm)}
+.fio-triplo{border-top:1px solid var(--tinta);border-bottom:1px solid var(--tinta);height:4px;margin:20px 0 0}
+.agenda{margin-top:16px;border-color:var(--azul)}
+.agenda .cab{background:var(--azul);color:var(--claro);font-size:14px;padding:6px 10px}
+.agenda .corpo{padding:8px 12px 10px}
+.item-ag{display:flex;gap:12px;border-bottom:1px dotted var(--tinta);padding:5px 0}
+.item-ag:last-of-type{border-bottom:0}
+.item-ag b{min-width:56px}
+.prep{font-style:italic;font-size:15px;margin-top:6px}
+.classif{margin-top:14px;border:1.5px dashed var(--tinta);background:var(--claro);padding:10px 12px}
+.classif .cab{font-size:14px;text-align:center;border-bottom:1px solid var(--tinta);padding-bottom:4px}
+.anuncio{font-size:16px;line-height:1.4;margin-top:8px}
+.anuncio+.anuncio{border-top:1px dotted var(--tinta);padding-top:8px}
+.secao-titulo{margin-top:24px;font-size:15px;letter-spacing:2px;text-align:center;border-top:2px solid var(--verm);border-bottom:2px solid var(--verm);color:var(--verm);padding:3px 0}
+.noticias{display:grid;grid-template-columns:minmax(0,1fr);gap:0 24px}
+.noticia{border-top:1px solid var(--tinta);padding-top:12px;margin-top:12px}
+.noticia:first-child{border-top:0;padding-top:0}
+.noticia h2{font-size:22px;line-height:1.15;margin:0 0 4px}
+.noticia p{margin:0}
+.par{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:24px}
+.sub-titulo{font-size:13px;color:var(--azul);border-bottom:2px solid var(--azul);padding-bottom:2px}
+.par h3,.solo h3{font-size:18px;line-height:1.15;margin:8px 0 4px}
+.par p,.solo p{font-size:15.5px;line-height:1.38;margin:0}
+.solo{margin-top:20px;border-top:1px solid var(--tinta);padding-top:12px}
+.extras{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:24px}
+.extra{padding:10px 12px;border:1.5px solid var(--tinta)}
+.extra.hist{background:var(--most);color:var(--tinta)}
+.extra.sabia{background:var(--claro)}
+.extra .rot{font-size:13px}
+.extra.sabia .rot{color:var(--verm)}
+.extra p{font-size:15.5px;line-height:1.35;margin:6px 0 0}
+.expediente{margin-top:26px;border-top:4px double var(--tinta);padding-top:8px;text-align:center;font-size:14px}
+.botao{display:inline-block;margin-top:12px;min-height:44px;padding:11px 18px;border:1.5px solid var(--tinta);color:var(--tinta);text-decoration:none;font-size:14px}
+.botao:hover{background:var(--tinta);color:var(--claro)}
+@media (min-width:360px){.par,.extras{grid-template-columns:repeat(2,minmax(0,1fr))}.par>div:first-child{border-right:1px solid var(--tinta);padding-right:14px}}
+@media (min-width:700px){.noticias{grid-template-columns:repeat(2,minmax(0,1fr))}.noticias .noticia:nth-child(2){border-top:0;padding-top:0}}
+</style>
+</head>
+<body>
+<!-- Template filled by scripts/assemble.py (double braces = escaped text, triple braces = trusted internal HTML/SVG, IF comments = optional block, EACH comments = repeated block). Do not edit by hand during an edition. -->
+<main class="pagina">
+
+<div class="linha-data sc"><span>{{L_year_label}} {{YEAR_ROMAN}} · {{L_issue_label}} {{NUMBER_3}}</span><span>{{DATE_LONG}}</span></div>
+
+<header class="cabeca">
+<div class="nome display">{{NEWSPAPER}}</div>
+<div class="lema">{{MOTTO}}</div>
+</header>
+<div class="fio-duplo"></div>
+<div class="faixa sc">{{BAND}}</div>
+
+<!--IF:weather-->
+<section class="quadro tempo">
+{{{SVG_WEATHER}}}
+<div>
+<div class="rot sc">{{WEATHER_TITLE}}</div>
+<div><b>{{MAX}}° / {{MIN}}°</b> · {{CONDITION}} · <a href="{{URL_WEATHER}}" target="_blank" rel="noopener">{{L_source_short}}</a></div>
+</div>
+</section>
+<!--/IF:weather-->
+
+<!--IF:headline-->
+<article>
+<div class="chapeu sc">{{L_headline}} · {{HEADLINE_SECTION}}</div>
+<h1 class="manchete display">{{HEADLINE_TITLE}}</h1>
+<div class="fina">{{HEADLINE_DECK}}</div>
+<div class="foto" role="img" aria-label="{{L_illustration_aria}}">
+{{{SVG_HEADLINE}}}
+<span class="leg">{{L_illustration}}</span>
+</div>
+<p class="texto"><span class="capitular display">{{FIRST_LETTER}}</span>{{HEADLINE_REST}} <a href="{{URL_HEADLINE}}" target="_blank" rel="noopener">{{L_source}}: {{OUTLET_HEADLINE}}</a></p>
+</article>
+<!--/IF:headline-->
+
+<div class="fio-triplo"></div>
+
+<section class="quadro agenda">
+<div class="cab sc">{{L_agenda_title}}</div>
+<div class="corpo">
+<!--EACH:agenda-->
+<div class="item-ag"><b>{{time}}</b><span>{{event}}</span></div>
+<!--/EACH:agenda-->
+<!--IF:agenda_free-->
+<div class="item-ag"><span>{{L_agenda_free_line}}</span></div>
+<!--/IF:agenda_free-->
+<!--IF:prep-->
+<div class="prep">{{PREP_NOTE}}</div>
+<!--/IF:prep-->
+</div>
+</section>
+
+<!--IF:classifieds_block-->
+<section class="classif">
+<div class="cab sc">{{L_classifieds_title}}</div>
+<!--EACH:classifieds-->
+<div class="anuncio"><b>{{tag}}</b> {{text}}<!--IF:url--> <a href="{{url}}" target="_blank" rel="noopener">{{in_gmail}}</a><!--/IF:url--></div>
+<!--/EACH:classifieds-->
+<!--IF:classifieds_empty-->
+<div class="anuncio">{{L_classifieds_empty}}</div>
+<!--/IF:classifieds_empty-->
+</section>
+<!--/IF:classifieds_block-->
+
+{{{SECTIONS_HTML}}}
+
+<!--IF:week-->
+<section class="solo">
+<div class="sub-titulo sc">{{L_week_in_a_cup}}</div>
+<!--EACH:week-->
+<p>· {{text}}</p>
+<!--/EACH:week-->
+</section>
+<!--/IF:week-->
+
+<!--IF:extras-->
+<div class="extras">
+<!--IF:history-->
+<div class="extra hist"><div class="rot sc">{{L_history_title}}</div><p>{{HISTORY}}<!--IF:url_history--> <a href="{{URL_HISTORY}}" target="_blank" rel="noopener">{{L_source_short}}</a><!--/IF:url_history--></p></div>
+<!--/IF:history-->
+<!--IF:didyouknow-->
+<div class="extra sabia"><div class="rot sc">{{L_didyouknow_title}}</div><p>{{DIDYOUKNOW}}<!--IF:url_didyouknow--> <a href="{{URL_DIDYOUKNOW}}" target="_blank" rel="noopener">{{L_source_short}}</a><!--/IF:url_didyouknow--></p></div>
+<!--/IF:didyouknow-->
+</div>
+<!--/IF:extras-->
+
+<footer class="expediente">
+<div class="sc">{{L_footer_title}}</div>
+<div><i>{{FOOTER_CREDITS}}</i></div>
+<a class="botao sc" href="../index.html">{{L_archive_button}}</a>
+</footer>
+
+</main>
+</body>
+</html>
