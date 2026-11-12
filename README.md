@@ -69,6 +69,12 @@ docs/brand/                   banner, logo and emblem (SVG)
 
 The scripts use only the Python standard library.
 
+## Support
+
+Morning Newspaper is free and open source. If it brightens your mornings and you'd like to help keep it going (new languages, new features), you can buy me a coffee:
+
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-C8901E?style=for-the-badge&logo=buymeacoffee&logoColor=1E1B16&labelColor=F2E8D5)](https://buymeacoffee.com/oantuneshenriqueo)
+
 ## License
 
 [MIT](LICENSE)
