@@ -17,7 +17,8 @@ Use the session's artifact tools: list artifacts, get an artifact's state (versi
 1. If the request or the scheduled task prompt has the newsstand slug, use it.
 2. Otherwise list the reader's artifacts and look for one whose files include `editions/index.json` (check the most likely titles first: the newspaper name followed by " · " and the newsstand label, e.g. "O Jornal Matinal · Banca").
 3. More than one: use the most recent and, in an interactive session, say so in one line.
-4. None: this is a first run → `references/setup.md`.
+4. None: this is a first run → `references/setup.md` (or `references/sample.md` in a scheduled run).
+5. Found, but without `config.json`: it only holds sample editions. In a scheduled run, add another sample edition to it; in an interactive session, run setup and keep using this newsstand (see the end of `references/setup.md`).
 
 Then read `config.json` and `editions/index.json` from it into `WORK/config.json` and `WORK/index.json`. Older newsstands may use `edicoes/indice.json`: read that instead; the scripts understand both.
 

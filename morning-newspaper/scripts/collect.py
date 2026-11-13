@@ -176,7 +176,7 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
             try:
                 raw[sid].extend(f.result())
             except Exception as e:
-                failures.append(f"{sid}: {urllib.parse.urlparse(u).netloc} ({type(e).__name__})")
+                failures.append(f"{sid}: {urllib.parse.urlparse(u).netloc} ({type(e).__name__} {getattr(e, 'code', '')})".replace(" )", ")"))
     cutoff = now - dt.timedelta(hours=window_h)
     pre = prefixes(cfg["sections"])
     out = {}
@@ -249,7 +249,7 @@ def weather_open_meteo(city, tzname):
 def collect_weather(cfg):
     city = cfg.get("city") or {}
     if not city.get("name"):
-        return None, ["weather: no city in config"]
+        return None, []  # no city configured (e.g. sample edition): not a failure
     lang = (cfg.get("language") or "en").split("-")[0]
     errors = []
     try:
@@ -330,7 +330,7 @@ def main():
         history = collect_history(day, cfg, used_history)
     except Exception as e:
         history = []
-        failures.append(f"history: wikipedia ({type(e).__name__})")
+        failures.append(f"history: wikipedia ({type(e).__name__} {getattr(e, 'code', '')})".replace(" )", ")"))
 
     out = {"date": day.isoformat(), "number": reissue or number, "reissue": bool(reissue), "weekend": weekend,
            "window_hours": window, "weather": weather, "news": news, "history": history,
@@ -347,6 +347,8 @@ def main():
     if weather:
         print(f"WEATHER: {weather['max']}°/{weather['min']}° {weather['condition']} [{weather['condition_lang']}]"
               f" · rain {weather['rain_chance']}% · icon {weather['icon']}")
+    elif not (cfg.get("city") or {}).get("name"):
+        print("WEATHER: no city configured (leave the weather out)")
     else:
         print("WEATHER: unavailable")
     for sec in cfg["sections"]:

@@ -29,16 +29,14 @@ Connect **Google Calendar** and **Gmail** if you want the agenda and the classif
 
 ## First run
 
-Ask Claude for *"my morning newspaper"* (in any language). On the first run it asks up to five quick questions:
-1. your name,
-2. your city,
-3. your topics,
-4. the newspaper's name,
-5. the time you want it ready.
+Ask Claude for *"my morning newspaper"* (in any language). Claude first checks whether Google Calendar and Gmail are connected and offers to connect them, then gives you two ways to start:
 
-It then publishes edition No. 001 together with your newsstand and offers to schedule a daily edition.
+- **Quick start:** just tell it your city. Everything else uses the defaults and can be changed later.
+- **Personalize:** up to five short questions (your name, city, topics, the newspaper's name and the time you want it ready).
 
-Your answers are saved as `config.json` **inside your private newsstand**, never in this repository. See [`references/config.example.json`](morning-newspaper/references/config.example.json) for the format.
+It then prints edition No. 001, creates your newsstand and offers to schedule a daily edition. Your answers are saved as `config.json` **only inside your private newsstand**; nothing is sent or shared, and nothing goes into this repository. See [`references/config.example.json`](morning-newspaper/references/config.example.json) for the format.
+
+If a daily run is scheduled before the newspaper was ever set up, you still get a paper: a **sample edition** with the default sections and a short notice at the top explaining how to set it up.
 
 ### Daily schedule and approvals
 

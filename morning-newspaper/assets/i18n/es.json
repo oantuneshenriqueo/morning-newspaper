@@ -74,5 +74,10 @@
  "archive_empty": "Todavía no hay ediciones en el quiosco.",
  "archive_error": "No se pudo abrir el índice del quiosco ahora.",
  "weekend_tag": "fin de semana",
- "time_format": "{h}:{m}"
+ "time_format": "{h}:{m}",
+ "edition_sample": "Edición de muestra",
+ "sample_section": "Edición de muestra",
+ "sample_title": "Este periódico todavía no está configurado",
+ "sample_text": "Por eso, esta edición usa las secciones predeterminadas y no trae el tiempo ni las noticias de tu ciudad. Para personalizarla, dile a Claude {command} y responde unas preguntas sobre tu nombre, tu ciudad y los temas que quieres seguir. La configuración se guarda en tu quiosco privado.",
+ "sample_command": "configurar mi periódico"
 }

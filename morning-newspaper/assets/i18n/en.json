@@ -74,5 +74,10 @@
  "archive_empty": "No editions at the newsstand yet.",
  "archive_error": "Could not open the newsstand index right now.",
  "weekend_tag": "weekend",
- "time_format": "{h}:{m}"
+ "time_format": "{h}:{m}",
+ "edition_sample": "Sample edition",
+ "sample_section": "Sample edition",
+ "sample_title": "This newspaper has not been set up yet",
+ "sample_text": "That is why this edition uses the default sections and has no weather or local news. To personalize it, tell Claude {command} and answer a few questions about your name, your city and the topics you want to follow. The setup is saved in your private newsstand.",
+ "sample_command": "set up my newspaper"
 }

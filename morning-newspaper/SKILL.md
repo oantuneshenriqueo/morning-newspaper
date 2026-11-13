@@ -26,6 +26,7 @@ Gathering news, weather and "On this day", building the HTML, updating the newss
 | `scripts/collect.py` | Do not read: run in step 2 |
 | `scripts/assemble.py` | Do not read: run in step 5 |
 | `references/setup.md` | Only when there is no config yet, or the reader wants to change it |
+| `references/sample.md` | Only in a scheduled run that finds no config (sample edition) |
 | `references/writing.md` | Step 4, before writing |
 | `references/edition-format.md` | Step 4, the JSON format |
 | `references/archive.md` | Steps 1 and 6 (finding and publishing to the newsstand) |
@@ -37,6 +38,7 @@ Gathering news, weather and "On this day", building the HTML, updating the newss
 ## Scheduling
 
 When the reader asks for a daily schedule (or, once, at the end of the first interactive run if none exists):
+- **No config yet?** Do not create the task first. Run `references/setup.md` (the quick start is fine), publish edition No. 001 so the reader sees what they will get, and only then create the schedule. A schedule created before setup would wake up to a sample edition instead of their paper.
 - Use the session's scheduled-task tool. Run a few minutes before the time they want the paper ready, in their timezone (`CRON_TZ=<config.timezone> 43 6 * * *` for a 7:00 paper).
 - The task prompt must be self-contained, written in the reader's language, and include the newsstand slug, e.g.: "Run the morning-newspaper skill and publish today's edition to the newsstand (slug: SLUG). Scheduled run: ask nothing, decide and go on."
 - After creating it, say in one sentence which approval mode it got. If runs will ask for approval, explain that nobody is there at dawn to approve, so the edition would stall, and point to `references/permissions.md`.
@@ -46,12 +48,15 @@ When the reader asks for a daily schedule (or, once, at the end of the first int
 
 Say in one line that the edition takes a few minutes. In a scheduled run nobody is watching: ask nothing, decide and go on.
 
-Working folder: `~/newspaper/YYYY-MM-DD/` (WORK below). Skill folder: SKILL.
+Working folder: `~/newspaper/YYYY-MM-DD/`, dated in the reader's timezone (WORK below). Skill folder: SKILL.
 
 ### 1. Find the newsstand and the config
 
 Follow `references/archive.md` ("Finding the newsstand"). From it, save `config.json` to `WORK/config.json` and `editions/index.json` to `WORK/index.json`.
-- **No newsstand or no `config.json`:** interactive session → run `references/setup.md`, then continue. Scheduled run → if the task prompt contains a config, use it; otherwise stop without publishing (setup needs the reader).
+- **No newsstand or no `config.json`:**
+  - Interactive session → run `references/setup.md`, then continue.
+  - Scheduled run with a config in the task prompt → use it.
+  - Scheduled run without any config → never stop empty-handed: follow `references/sample.md` to publish a **sample edition** that explains how to set the newspaper up.
 
 ### 2. Gather (one shell call + connectors, in parallel)
 
@@ -62,9 +67,9 @@ In the same block of calls:
 
 **Fallback, only when something is missing:** if a section failed in the script (`FAILURES`) and came back empty, do one web search for it with the current month and year. Weather unavailable: one search for today's forecast in the reader's city; without a reliable result, `"weather": false`.
 
-**WebFetch only for the headline**, and only if the collected title and summary are not enough for 3 correct sentences. Never open secondary stories: their 1–2 sentences come from title and summary.
+**Extra research only for the headline:** one web search with the headline's title (collected links are Google News redirects that page fetchers cannot open). Never research secondary stories: their 1–2 sentences come from title and summary.
 
-Missing tool or connector: that section is left out of the paper, with no notice in it. In an interactive session, say in one line at the end which connection would help.
+Missing tool or connector: leave its key out of `edition.json` so the box disappears (never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read). In an interactive session, say in one line at the end which connection would help.
 
 ### 3. Select
 
@@ -101,7 +106,9 @@ Follow `references/archive.md` ("Adding today's edition"). Publish exactly the f
 
 ### 8. Deliver
 
-Interactive session: one sentence with today's headline, in the reader's language (the artifact card already shows the link). Scheduled run: just publish; send no messages.
+- First run (just after setup): the summary described at the end of `references/setup.md`.
+- Any other interactive run: one sentence with today's headline, in the reader's language (the artifact card already shows the link).
+- Scheduled run: just publish; send no messages.
 
 ## Safety rules
 

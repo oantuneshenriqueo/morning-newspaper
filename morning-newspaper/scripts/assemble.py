@@ -169,6 +169,8 @@ def main():
     ap.add_argument("--work", required=True)
     ap.add_argument("--index", help="current index.json of the newsstand; omit if it does not exist yet")
     ap.add_argument("--with-config", action="store_true", help="also write config.json into the output to publish")
+    ap.add_argument("--sample", action="store_true",
+                    help="sample edition for a reader with no setup yet: adds the setup notice and never publishes config.json")
     a = ap.parse_args()
 
     errors, warnings = [], []
@@ -268,9 +270,13 @@ def main():
     if total < lo:
         warnings.append(f"only {total} stories (usual minimum {lo}); fine if it is a slow day")
 
-    agenda = ed.get("agenda") or []
+    # A missing key (or false) means the connector is not available: hide the box instead of
+    # claiming a free day or an empty inbox. An empty list means connected and nothing to show.
+    has_agenda = isinstance(ed.get("agenda"), list)
+    has_mail = isinstance(ed.get("classifieds"), list)
+    agenda = ed.get("agenda") if has_agenda else []
     classifieds = []
-    for i, c in enumerate(ed.get("classifieds") or []):
+    for i, c in enumerate(ed.get("classifieds") if has_mail else []):
         c = dict(c)
         if c.get("url") and not str(c["url"]).startswith("https://mail.google.com/"):
             errors.append(f"classifieds[{i}]: link must be https://mail.google.com/...")
@@ -305,9 +311,10 @@ def main():
     def plural(n, one, many):
         return f"{n} {L[one] if n == 1 else L[many]}"
 
+    sample = a.sample or bool(ed.get("sample"))
     band = ed.get("band") or " · ".join(filter(None, [
-        L["edition_weekend"] if weekend else L["edition_morning"],
-        plural(len(agenda), "appointment", "appointments") if agenda else L["free_agenda"],
+        L["edition_sample"] if sample else (L["edition_weekend"] if weekend else L["edition_morning"]),
+        (plural(len(agenda), "appointment", "appointments") if agenda else L["free_agenda"]) if has_agenda else "",
         plural(len(classifieds), "classified", "classifieds") if classifieds else "",
         f"{total} {L['news_items']}"]))
     summary_line = band.split(" · ", 1)[1] if " · " in band else band
@@ -333,8 +340,9 @@ def main():
         "SVG_HEADLINE": svg(SVG_ICON.get(h.get("icon"), SVG_ICON["newspaper"]), 56),
         "FIRST_LETTER": text_h[:1], "HEADLINE_REST": text_h[1:],
         "URL_HEADLINE": h.get("url", ""), "OUTLET_HEADLINE": h.get("outlet", ""),
-        "agenda_free": not agenda, "prep": bool(ed.get("prep_note")), "PREP_NOTE": ed.get("prep_note", ""),
-        "classifieds_block": bool(classifieds) or not weekend, "classifieds_empty": not classifieds,
+        "agenda_block": has_agenda, "agenda_free": has_agenda and not agenda,
+        "prep": bool(ed.get("prep_note")), "PREP_NOTE": ed.get("prep_note", ""),
+        "classifieds_block": has_mail and (bool(classifieds) or not weekend), "classifieds_empty": not classifieds,
         "SECTIONS_HTML": sections_html(cfg, sections, L), "week": bool(week),
         "extras": bool(hist.get("text") or dyk.get("text")),
         "history": bool(hist.get("text")), "HISTORY": hist.get("text", ""),
@@ -347,6 +355,9 @@ def main():
     for k, v in L.items():
         if isinstance(v, str):
             ctx[f"L_{k}"] = v
+    stext = L["sample_text"].split("{command}")
+    srest = esc(stext[0][1:]) + (f'<b class="cmd">"{esc(L["sample_command"])}"</b>' + esc(stext[1]) if len(stext) > 1 else "")
+    ctx.update({"sample": sample, "SAMPLE_FIRST": stext[0][:1], "SAMPLE_REST_HTML": srest})
     lists = {"agenda": agenda, "classifieds": classifieds, "week": week}
 
     with open(os.path.join(a.skill, "assets", "edition.html"), encoding="utf-8") as f:
@@ -373,7 +384,7 @@ def main():
     stories = ([h] if h else []) + [n for v in sections.values() for n in v]
     entry = {
         "date": day.isoformat(), "number": number, "weekday": L["weekdays"][day.weekday()],
-        "type": "weekend" if weekend else "morning", "headline": h.get("title", ""), "summary": summary_line,
+        "type": "sample" if sample else ("weekend" if weekend else "morning"), "headline": h.get("title", ""), "summary": summary_line,
         "file": f"editions/{day.isoformat()}.html",
         "extras": {"history": hist.get("summary") or hist.get("text", "")[:140],
                    "did_you_know": dyk.get("summary") or dyk.get("text", "")[:140]},
@@ -401,7 +412,7 @@ def main():
         shutil.copy(os.path.join(a.skill, "assets", "archive.html"), os.path.join(dest, "index.html"))
         publish.insert(0, "index.html")
         print("NEW NEWSSTAND: create the artifact with the files below.")
-    if index is None or a.with_config:
+    if (index is None or a.with_config) and not sample:
         shutil.copy(a.config, os.path.join(dest, "config.json"))
         publish.append("config.json")
     print(f"OK: {L['issue_label']} {number:03d} · {day.isoformat()} · {total} stories"

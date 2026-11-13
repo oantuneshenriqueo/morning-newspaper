@@ -30,6 +30,7 @@ Write everything in the reader's language (`config.language`). The paper sounds 
 
 ## Never
 - Invent a story, number, date, source or quote.
+- Add facts from memory: every name, number and detail must come from the collected title/summary or from a search made in this run. If it is not there, leave it out.
 - Give investment advice.
 - Order the reader around ("you must…"), preach, or apologize ("I couldn't find much"). A slow day is a slow day.
 - Narrate the process ("I searched several sources…").

@@ -67,6 +67,10 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 .botao:hover{background:var(--tinta);color:var(--claro)}
 @media (min-width:360px){.par,.extras{grid-template-columns:repeat(2,minmax(0,1fr))}.par>div:first-child{border-right:1px solid var(--tinta);padding-right:14px}}
 @media (min-width:700px){.noticias{grid-template-columns:repeat(2,minmax(0,1fr))}.noticias .noticia:nth-child(2){border-top:0;padding-top:0}}
+.editorial{margin-top:16px}
+.editorial .ttl{font-family:"Gloock",Georgia,serif;font-size:26px;line-height:1.1;margin:10px 0 8px;text-align:center}
+.editorial p{text-align:justify;hyphens:auto;margin:6px 0 0}
+.cmd{hyphens:none;-webkit-hyphens:none}
 </style>
 </head>
 <body>
@@ -81,6 +85,13 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 </header>
 <div class="fio-duplo"></div>
 <div class="faixa sc">{{BAND}}</div>
+
+<!--IF:sample-->
+<section class="editorial"><div class="secao-titulo sc">{{L_sample_section}}</div>
+<div class="ttl">{{L_sample_title}}</div>
+<p><span class="capitular display">{{SAMPLE_FIRST}}</span>{{{SAMPLE_REST_HTML}}}</p></section>
+<div class="fio-triplo"></div>
+<!--/IF:sample-->
 
 <!--IF:weather-->
 <section class="quadro tempo">
@@ -107,6 +118,7 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 
 <div class="fio-triplo"></div>
 
+<!--IF:agenda_block-->
 <section class="quadro agenda">
 <div class="cab sc">{{L_agenda_title}}</div>
 <div class="corpo">
@@ -121,6 +133,7 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <!--/IF:prep-->
 </div>
 </section>
+<!--/IF:agenda_block-->
 
 <!--IF:classifieds_block-->
 <section class="classif">

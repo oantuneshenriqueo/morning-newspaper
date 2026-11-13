@@ -74,5 +74,10 @@
  "archive_empty": "Nenhuma edição na banca ainda.",
  "archive_error": "Não foi possível abrir o índice da banca agora.",
  "weekend_tag": "fim de semana",
- "time_format": "{h}h{m}"
+ "time_format": "{h}h{m}",
+ "edition_sample": "Edição de amostra",
+ "sample_section": "Edição de amostra",
+ "sample_title": "Este jornal ainda não foi configurado",
+ "sample_text": "Por isso, esta edição usa as seções padrão e não traz o clima nem as notícias da sua cidade. Para personalizar, diga ao Claude {command} e responda algumas perguntas sobre seu nome, sua cidade e os assuntos que quer acompanhar. A configuração fica guardada na sua banca privada.",
+ "sample_command": "configurar meu jornal"
 }
