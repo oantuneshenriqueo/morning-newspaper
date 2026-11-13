@@ -24,7 +24,7 @@ The default name follows your language (**Morning Newspaper** in English, **O Jo
 2. In Claude, open **Customize → Skills**, click **+ → Create skill → Upload a skill**, and choose the zip.
 3. Make sure the skill is switched on.
 
-**Updating:** see what changed in the [changelog](CHANGELOG.md), then delete the old `morning-newspaper` skill and upload the new zip as a *new* skill. The "Replace" screen can fail with a generic upload error.
+**Updating:** see what changed in the [changelog](CHANGELOG.md), download `morning-newspaper.zip` from the [latest release](https://github.com/oantuneshenriqueo/morning-newspaper/releases/latest), open the `morning-newspaper` skill in **Customize → Skills** and replace it with the new zip. Your settings and past editions live in your newsstand, so nothing is lost. If the upload fails with a generic error, delete the old skill and upload the zip as a new one.
 
 Connect **Google Calendar** and **Gmail** if you want the agenda and the classifieds. Without them, those boxes are left out.
 
