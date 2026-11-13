@@ -1,12 +1,17 @@
 name: Release
 
 # Publishes a GitHub release with a freshly built morning-newspaper.zip.
-# Two ways to trigger it:
-#   1. Push a version tag:      git tag v1.1.0 && git push origin v1.1.0
-#   2. Run it by hand:          Actions tab -> Release -> Run workflow -> type the version (e.g. v1.1.0)
+# Three ways to trigger it:
+#   1. Change the VERSION file on main (e.g. 1.1.0) and push the commit
+#   2. Push a version tag:      git tag v1.1.0 && git push origin v1.1.0
+#   3. Run it by hand:          Actions tab -> Release -> Run workflow -> type the version (e.g. v1.1.0)
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - VERSION
     tags:
       - "v*"
   workflow_dispatch:
@@ -32,6 +37,8 @@ jobs:
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             TAG="$INPUT_VERSION"
+          elif [ "$GITHUB_REF_TYPE" = "branch" ]; then
+            TAG="v$(tr -d ' \r\n' < VERSION)"
           else
             TAG="$GITHUB_REF_NAME"
           fi
