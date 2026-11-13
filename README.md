@@ -19,11 +19,11 @@ The default name follows your language (**Morning Newspaper** in English, **O Jo
 
 ## Install (claude.ai or the Claude apps)
 
-1. Download [`dist/morning-newspaper.zip`](dist/morning-newspaper.zip). Do not unzip it.
+1. Download `morning-newspaper.zip` from the [latest release](https://github.com/oantuneshenriqueo/morning-newspaper/releases/latest). Do not unzip it.
 2. In Claude, open **Customize → Skills**, click **+ → Create skill → Upload a skill**, and choose the zip.
 3. Make sure the skill is switched on.
 
-**Updating:** delete the old `morning-newspaper` skill and upload the new zip as a *new* skill. The "Replace" screen can fail with a generic upload error.
+**Updating:** see what changed in the [changelog](CHANGELOG.md), then delete the old `morning-newspaper` skill and upload the new zip as a *new* skill. The "Replace" screen can fail with a generic upload error.
 
 Connect **Google Calendar** and **Gmail** if you want the agenda and the classifieds. Without them, those boxes are left out.
 
@@ -53,7 +53,7 @@ morning-newspaper/            the skill (this folder is what goes in the zip)
   assets/edition.html         edition template
   assets/archive.html         newsstand page
   assets/i18n/*.json          UI labels (en, pt-BR, es)
-dist/morning-newspaper.zip    ready-to-upload skill
+dist/morning-newspaper.zip    development build (may be ahead of the latest release)
 build-zip.sh                  rebuilds the zip
 docs/example.png              screenshot with fictional content
 docs/brand/                   banner, logo and emblem (SVG)
@@ -62,7 +62,8 @@ docs/brand/                   banner, logo and emblem (SVG)
 ## Contributing
 
 - Add a language: copy `morning-newspaper/assets/i18n/en.json` to `<code>.json` and translate the values. Keep the `{placeholders}` and the order of weekdays (Monday first) and months.
-- After changing the skill, run `./build-zip.sh` so `dist/` stays in sync.
+- After changing the skill, run `./build-zip.sh` so `dist/` stays in sync. `dist/` follows `main` and can hold unreleased changes; users should install from Releases.
+- Versions follow [Semantic Versioning](https://semver.org): PATCH for fixes, MINOR for new features that keep existing configs and newsstands working, MAJOR when updating requires the user to change something (the changelog then explains how).
 - Releases are automatic: bumping the number in `VERSION` (or pushing a tag like `v1.1.0`) runs `.github/workflows/release.yml`, which rebuilds the zip and publishes the release using the matching section of `CHANGELOG.md` as its notes. Add a `## vX.Y.Z` section there before bumping `VERSION`. It can also be run by hand from the Actions tab.
 - Never commit a real `config.json`, edition or newsstand index: they contain personal data. `.gitignore` already blocks them.
 
