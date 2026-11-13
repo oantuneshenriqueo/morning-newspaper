@@ -1,0 +1,49 @@
+name: Tests
+
+# Runs the test suite (tests/) on every push and pull request to main, and before every release.
+# The tests never touch the network. Known bugs are marked xfail; once one is fixed its test
+# starts passing and the run fails until the mark is removed (xfail_strict in pytest.ini).
+#
+# Optional privacy check: add a repository secret named PRIVACY_TERMS with one private term per
+# line (full name, city, e-mail...). The test fails if any committed file contains one of them,
+# without ever printing the term.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_call:
+    secrets:
+      PRIVACY_TERMS:
+        required: false
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install pytest
+        run: python -m pip install --upgrade pytest
+
+      - name: Run the tests
+        env:
+          PRIVACY_TERMS: ${{ secrets.PRIVACY_TERMS }}
+        run: python -m pytest

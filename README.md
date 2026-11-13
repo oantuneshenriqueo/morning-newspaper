@@ -55,6 +55,7 @@ morning-newspaper/            the skill (this folder is what goes in the zip)
   assets/i18n/*.json          UI labels (en, pt-BR, es)
 dist/morning-newspaper.zip    development build (may be ahead of the latest release)
 build-zip.sh                  rebuilds the zip
+tests/                        automated tests (pytest, offline)
 docs/example.png              screenshot with fictional content
 docs/brand/                   banner, logo and emblem (SVG)
 ```
@@ -65,6 +66,7 @@ docs/brand/                   banner, logo and emblem (SVG)
 - After changing the skill, run `./build-zip.sh` so `dist/` stays in sync. `dist/` follows `main` and can hold unreleased changes; users should install from Releases.
 - Versions follow [Semantic Versioning](https://semver.org): PATCH for fixes, MINOR for new features that keep existing configs and newsstands working, MAJOR when updating requires the user to change something (the changelog then explains how).
 - Releases are automatic: bumping the number in `VERSION` (or pushing a tag like `v1.1.0`) runs `.github/workflows/release.yml`, which rebuilds the zip and publishes the release using the matching section of `CHANGELOG.md` as its notes. Add a `## vX.Y.Z` section there before bumping `VERSION`. It can also be run by hand from the Actions tab.
+- Tests: `pip install pytest` and run `python -m pytest`. They run offline and also run on GitHub for every push and pull request; a release is only published when they pass. Known bugs are marked `xfail`; when you fix one, its test starts passing and the run fails until you remove the mark.
 - Never commit a real `config.json`, edition or newsstand index: they contain personal data. `.gitignore` already blocks them.
 
 The scripts use only the Python standard library.

@@ -1,0 +1,32 @@
+{
+ "date": "2026-11-13",
+ "number": 1,
+ "reissue": false,
+ "weekend": false,
+ "window_hours": 48,
+ "weather": {"max": 27, "min": 17, "condition": "Partly cloudy", "rain_chance": 20, "icon": "sun-cloud",
+             "url": "https://wttr.in/Springfield", "condition_lang": "en"},
+ "news": {
+  "tech": [
+   {"id": "a1", "title": "Major browser patches actively exploited flaw", "outlet": "Example Tech", "url": "https://tech.example.com/a1", "date": "2026-11-13 06:10", "summary": ""},
+   {"id": "a2", "title": "New open model tops coding benchmark", "outlet": "Example AI", "url": "https://ai.example.com/a2", "date": "2026-11-12 21:40", "summary": ""},
+   {"id": "a3", "title": "Password manager reports data breach", "outlet": "Example Sec", "url": "https://sec.example.com/a3", "date": "2026-11-12 18:00", "summary": ""}
+  ],
+  "local": [
+   {"id": "b1", "title": "City repaves Main Street next week", "outlet": "Springfield Daily", "url": "https://local.example.com/b1", "date": "2026-11-12 15:00", "summary": ""}
+  ],
+  "money": [
+   {"id": "c1", "title": "Central bank holds interest rates steady", "outlet": "Example Money", "url": "https://money.example.com/c1", "date": "2026-11-12 14:00", "summary": ""}
+  ],
+  "games": [
+   {"id": "d1", "title": "Farming sim gets big winter update", "outlet": "Example Games", "url": "https://games.example.com/d1", "date": "2026-11-12 12:00", "summary": ""}
+  ]
+ },
+ "history": [
+  {"id": "h1", "year": 1990, "text": "The first web page goes online.", "url": "https://en.wikipedia.org/wiki/World_Wide_Web"}
+ ],
+ "did_you_know_theme": "history of the mouse",
+ "did_you_know_used": [],
+ "failures": [],
+ "generated_at": "2026-11-13T06:30"
+}

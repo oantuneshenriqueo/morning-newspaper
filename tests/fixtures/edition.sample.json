@@ -1,0 +1,13 @@
+{
+ "headline": {"ref": "a1", "title": "Browser patches a flaw already under attack", "deck": "Update now: the fix ships today on every desktop platform.", "text": "A browser maker released an emergency fix. The flaw was already being exploited. Updating takes a minute.", "icon": "lock"},
+ "agenda": [{"time": "8:00", "event": "Team meeting"}],
+ "classifieds": [{"text": "Ana asked about the report draft.", "url": "https://mail.google.com/mail/u/0/#inbox/abc"}],
+ "sections": {
+  "tech": [{"ref": "a2", "title": "Open model tops a coding benchmark", "text": "It beats larger models on the test."}],
+  "local": [{"ref": "b1", "title": "Main Street gets new asphalt", "text": "Work starts next week."}],
+  "money": [{"ref": "c1", "title": "Rates stay where they were", "text": "Savers see no change this month."}],
+  "games": [{"ref": "d1", "title": "Winter arrives on the farm", "text": "The update adds snow and new crops."}]
+ },
+ "history": {"ref": "h1", "text": "In 1990, the first web page went online."},
+ "did_you_know": {"text": "The first computer mouse was made of wood.", "url": "https://example.org/mouse"}
+}
