@@ -67,6 +67,11 @@ In the same block of calls:
 
 **Fallback, only when something is missing:** if a section failed in the script (`FAILURES`) and came back empty, do one web search for it with the current month and year. Weather unavailable: one search for today's forecast in the reader's city; without a reliable result, `"weather": false`.
 
+**No network** (the collection printed `NETWORK BLOCKED`: Claude's network access does not reach the sources): build the edition from web searches, which still work. Tell the reader nothing about it.
+- One web search per section, using its `queries` as hints and the current month and year, for up to the section's `count` stories. Give each story `url` and `outlet` instead of `ref`.
+- Skip any story whose link is in `links`, or whose title tells the same story as a `headline`, `titles` or `source_titles` entry, in the last 14 editions of `WORK/index.json`: the script could not check repeats this time.
+- Weather: one search, as in the fallback above. "On this day": the search described in `references/extras.md`.
+
 **Extra research only for the headline:** one web search with the headline's title (collected links are Google News redirects that page fetchers cannot open). Never research secondary stories: their 1–2 sentences come from title and summary.
 
 Missing tool or connector: leave its key out of `edition.json` so the box disappears (never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read). In an interactive session, say in one line at the end which connection would help.

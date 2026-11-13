@@ -278,5 +278,46 @@ def test_main_writes_collected_json(tmp_path, config):
     assert out["date"] == "2026-11-13"
     assert out["window_hours"] == 48
     assert set(out["news"]) == {s["id"] for s in config["sections"]}
-    assert out["failures"], "offline run must report its failures"
+    assert out["failures"], "offline run must record its failures"
+    assert "NETWORK BLOCKED" in proc.stdout  # nothing reachable: one clear line instead of the list
+
+
+def run_collect(tmp_path, config, net_code):
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    runner = tmp_path / "run.py"
+    runner.write_text(
+        "import runpy, sys, urllib.request, urllib.error\n" + net_code +
+        f"sys.argv = ['collect.py', '--config', {str(cfg)!r}, '--work', {str(tmp_path / 'work')!r}, '--date', '2026-11-13']\n"
+        f"runpy.run_path({str(ROOT / 'morning-newspaper' / 'scripts' / 'collect.py')!r}, run_name='__main__')\n",
+        encoding="utf-8")
+    proc = subprocess.run([sys.executable, str(runner)], capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    return proc, json.loads((tmp_path / "work" / "collected.json").read_text(encoding="utf-8"))
+
+
+def test_blocked_network_is_reported_in_one_line(tmp_path, config):
+    proc, out = run_collect(tmp_path, config,
+                            "def no_net(*a, **k): raise urllib.error.URLError('blocked')\n"
+                            "urllib.request.urlopen = no_net\n")
+    assert "NETWORK BLOCKED" in proc.stdout
+    assert "FAILURES:" not in proc.stdout
+    assert out["network_blocked"] is True
+
+
+def test_partial_failure_is_not_a_blocked_network(tmp_path, config):
+    """Only Wikipedia answers: the other failures are listed and the edition goes on normally."""
+    wiki = json.dumps({"events": [{"year": 1990, "text": "A web page goes online.", "pages": []}]})
+    proc, out = run_collect(tmp_path, config,
+                            "import io\n"
+                            f"BODY = {wiki!r}.encode()\n"
+                            "class R(io.BytesIO):\n"
+                            "    def __enter__(self): return self\n"
+                            "    def __exit__(self, *a): pass\n"
+                            "def net(req, timeout=None):\n"
+                            "    if 'wikipedia.org' in req.full_url: return R(BODY)\n"
+                            "    raise urllib.error.URLError('down')\n"
+                            "urllib.request.urlopen = net\n")
+    assert "NETWORK BLOCKED" not in proc.stdout
     assert "FAILURES:" in proc.stdout
+    assert out["network_blocked"] is False and out["history"]

@@ -15,6 +15,7 @@ The default name follows your language (**Morning Newspaper** in English, **O Jo
 - **Today's Column and Classifieds.** Pulls today's events from Google Calendar and the emails that are still waiting for an answer from Gmail.
 - **Weather, "On this day" and "Did you know?"**, all checked against a source.
 - **Cheap to run.** Two small Python scripts do the heavy lifting: news gathering through RSS, weather, history facts, HTML building, newsstand index and checks. Claude only reads a compact summary, picks the stories and writes a short JSON. An edition costs roughly a third of what a do-everything-by-hand prompt would.
+- **Works with limited network access.** If Claude's network settings block the news, weather or Wikipedia sources, the newspaper falls back to web search on its own (a little more expensive, same paper).
 - **Safe by design.** Read-only GET requests to public sources. Everything collected is treated as data, never as instructions. It never sends email or edits your calendar. Personal money and health details never reach the page. Your newsstand stays private.
 
 ## Install (claude.ai or the Claude apps)

@@ -361,10 +361,14 @@ def main():
         history = []
         failures.append(f"history: wikipedia ({type(e).__name__} {getattr(e, 'code', '')})".replace(" )", ")"))
 
+    # Nothing at all could be reached (Claude's network access is off or limited): say it in one
+    # line so the model switches to the no-network mode instead of reading a dozen failures.
+    blocked = bool(failures) and not any(news.values()) and weather is None and not history
     out = {"date": day.isoformat(), "number": reissue or number, "reissue": bool(reissue), "weekend": weekend,
            "window_hours": window, "weather": weather, "news": news, "history": history,
            "did_you_know_theme": dyk_theme(cfg, day),
            "did_you_know_used": [s for s in used_didyouknow if s][:30], "failures": failures,
+           "network_blocked": blocked,
            "generated_at": now.isoformat(timespec="minutes")}
     os.makedirs(a.work, exist_ok=True)
     with open(os.path.join(a.work, "collected.json"), "w", encoding="utf-8") as f:
@@ -395,7 +399,9 @@ def main():
     print(f"\n[did_you_know] today's theme: {out['did_you_know_theme']}")
     if out["did_you_know_used"]:
         print("[did_you_know already used] " + " / ".join(out["did_you_know_used"][:15]))
-    if failures:
+    if blocked:
+        print("\nNETWORK BLOCKED: no source could be reached. Follow 'No network' in SKILL.md.")
+    elif failures:
         print("\nFAILURES: " + "; ".join(failures))
     return 0
 
