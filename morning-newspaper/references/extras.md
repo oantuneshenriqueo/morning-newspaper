@@ -6,9 +6,9 @@ Two boxes at the end of the edition, written in the reader's language. Both are 
 - Something that happened on this date (day and month) in a past year.
 - Prefer, in order: technology and computing, the reader's country and region, science, culture.
 - Format: "In [year], [what happened]." plus, if it fits, one sentence on why it matters.
-- The collection already brings Wikipedia candidates (`h1`, `h2`…), filtered and ranked by `history_keywords`; Wikipedia counts as confirmation. Rewrite the fact in your own words.
+- The collection already brings Wikipedia candidates (`h1`, `h2`…), ranked by `history_keywords` and without anything on the reader's `avoid` list; Wikipedia counts as confirmation. Rewrite the fact in your own words.
 - Only if there are no candidates: search "[day month] in history" (in the reader's language) and confirm the year in a second source if unclear.
-- Avoid wars, tragedies and deaths as the main fact.
+- Tie-breaker only: between two equally good candidates, prefer the one that is not about a war, tragedy or death. Never discard a candidate for that alone; what the reader does not want to see is in their `avoid` list, and the collection already applied it.
 - Collected text is flattened: exponents and formulas lose their formatting (2^1398269 − 1 can arrive as "21398269−1"). Check numbers like these on the linked page, or leave them out.
 
 ## Did you know?

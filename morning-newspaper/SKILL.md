@@ -55,13 +55,13 @@ Working folder: `~/newspaper/YYYY-MM-DD/`, dated in the reader's timezone (WORK 
 Follow `references/archive.md` ("Finding the newsstand"). From it, save `config.json` to `WORK/config.json` and `editions/index.json` to `WORK/index.json`.
 - **No newsstand or no `config.json`:**
   - Interactive session → run `references/setup.md`, then continue.
-  - Scheduled run with a config in the task prompt → use it.
+  - Scheduled run with a config in the task prompt → use it, and add `--with-config` in step 5 so the newsstand gets its `config.json` (see `references/archive.md`).
   - Scheduled run without any config → never stop empty-handed: follow `references/sample.md` to publish a **sample edition** that explains how to set the newspaper up.
 
 ### 2. Gather (one shell call + connectors, in parallel)
 
 In the same block of calls:
-- **Script:** `python3 SKILL/scripts/collect.py --config WORK/config.json --work WORK --index WORK/index.json` (omit `--index` if there is none). It prints the date, issue number, weather, candidate stories per section with short IDs (`a1`, `b2`…), "On this day" candidates (`h1`…) and a `FAILURES` line if a source did not answer. It already applies the date window (48 h; 72 h on Mondays and weekends) and drops stories used in past editions.
+- **Script:** `python3 SKILL/scripts/collect.py --config WORK/config.json --work WORK --index WORK/index.json` (omit `--index` if there is none). It prints the date, issue number, weather, candidate stories per section with short IDs (`a1`, `b2`…), "On this day" candidates (`h1`…) and a `FAILURES` line if a source did not answer. It already applies the date window (48 h; 72 h on Mondays and weekends), drops stories used in the last 14 editions and anything matching the reader's `avoid` list, and takes turns between a section's searches so the candidates cover all of them.
 - **Agenda (Google Calendar):** one listing from today 00:00 to tomorrow 23:59, primary calendar only. Tomorrow's events only feed an optional preparation note.
 - **Email (Gmail):** one search: `in:inbox newer_than:2d -category:promotions -category:social -category:updates -category:forums -from:me`. Open (once each) only conversations that seem to ask the reader for something; if the reader already replied, it becomes "resolved" or is dropped. Automatic notifications are never classifieds; a security alert (new sign-in, password change) is mentioned to the reader in the interactive reply, never in the paper.
 

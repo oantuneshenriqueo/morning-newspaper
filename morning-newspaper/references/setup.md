@@ -12,12 +12,13 @@ The agenda comes from Google Calendar and the emails waiting for a reply from Gm
 
 In a single short message:
 - **Quick start:** "Just tell me your city" (and, if unclear, their name). Everything else uses the defaults below and can be changed later; the delivery time is asked when the schedule is offered.
-- **Personalize:** up to five questions, asking only what the conversation has not already answered:
+- **Personalize:** up to six questions, asking only what the conversation has not already answered:
   1. What should the newspaper call you? (first name or nickname)
   2. Which city should the weather and local news cover?
   3. Which topics? Offer the defaults (technology/AI/security, local news, personal finance, games) and let them add, remove or rename sections.
   4. Newspaper name: keep the default for their language (`default_newspaper_name` in `assets/i18n/`, e.g. "Morning Newspaper", "O Jornal Matinal") or choose another?
   5. What time should the paper be ready? (for the daily schedule; default 7:00)
+  6. Optional: "Is there any subject you would rather not see?" No answer means nothing is filtered.
 
 End the message with one line on privacy, in their language, e.g.: "Your answers are saved only in your private newsstand; nothing is sent or shared."
 
@@ -33,6 +34,7 @@ Start from `references/config.example.json` and fill in:
 - `wikipedia_lang`: their Wikipedia language code (`pt`, `es`, `en`, …).
 - `sections`: quick start → the four default sections, with `title` and `queries` translated into their language and the `local` section pointed at their city. Personalized → for each topic an `id` (short, lowercase), a `title` in their language, a `layout` (`main` for the widest section, usually the first; `half` for two short sections shown side by side; `single` for a full-width short section), an `interest` sentence, `count` per weekday/weekend, 2–5 search `queries` in their language (short, no dates) and optional RSS `feeds` (https only). Put the country or region in the local and finance queries (e.g. "Valencia", "Comunitat Valenciana", "España inflación"): Google News mixes in other countries that share the language otherwise.
 - `history_keywords`: 10–20 words in their language for preferred "On this day" topics.
+- `avoid` (optional): words or short phrases the reader does not want to see, in their language. Only what the reader asked for: leave it `[]` in the quick start and never fill it in on your own. It applies to every news section and to "On this day", matching whole words only ("war" does not hide "software"), ignoring case and accents; include the variants that matter (singular and plural). A section may also carry its own `avoid` list.
 - `did_you_know_themes` (optional): 20–40 short themes for "Did you know?" tied to their interests. Leave it out to use the built-in technology themes.
 - `labels`: leave `{}` if `assets/i18n/` has their language (en, pt-BR, es). Otherwise translate every key of `assets/i18n/en.json` (keep the `{placeholders}` and the 7 weekdays / 12 months order).
 

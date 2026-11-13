@@ -60,5 +60,6 @@
   ],
   "total_news": { "weekday": [6, 9], "weekend": [4, 5], "max": 10 },
   "history_keywords": ["computer", "internet", "software", "video game", "console", "satellite", "launched", "science", "discovery"],
+  "avoid": [],
   "labels": {}
 }

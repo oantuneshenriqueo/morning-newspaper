@@ -116,6 +116,104 @@ def test_max_candidates(collect_module, offline, config):
     assert len(news["tech"]) == 2
 
 
+def test_searches_take_turns(collect_module, offline, config):
+    """A busy search must not fill every slot: each search contributes its newest stories in turn."""
+    busy = ["Rocket launch delayed", "Database release ships", "Browser update lands", "Chip factory opens",
+            "Satellite reaches orbit", "Compiler gains speed", "Keyboard maker expands", "Router flaw patched",
+            "Telescope spots comet", "Printer driver recalled", "Tablet sales climb", "Drone rules change"]
+    offline["q=busy"] = rss(*[(t, f"https://busy.example/{i}", 0.1 * i, "Busy") for i, t in enumerate(busy, 1)])
+    offline["q=quiet"] = rss(("Library opens archive", "https://quiet.example/1", 30, "Quiet"),
+                             ("Museum restores piano", "https://quiet.example/2", 40, "Quiet"))
+    config["sections"] = [dict(config["sections"][0], queries=["busy", "quiet"], max_candidates=6)]
+    news, failures = collect_module.collect_news(config, 48, NOW, set(), [], UTC)
+    assert failures == []
+    outlets = [n["outlet"] for n in news["tech"]]
+    assert len(outlets) == 6
+    assert outlets.count("Quiet") == 2, "the quiet search lost its place to the busy one"
+    dates = [n["date"] for n in news["tech"]]
+    assert dates == sorted(dates, reverse=True)
+
+
+# ---------------------------------------------------------------- repeats: only the last 14 editions
+
+def test_old_headlines_stop_blocking_recurring_news(collect_module):
+    editions = [{"date": f"2026-10-{d:02d}", "number": d, "headline": f"Headline {d}",
+                 "titles": [f"Title {d}"], "source_titles": [f"Collected {d}"],
+                 "links": [f"https://x.example/{d}"]} for d in range(1, 21)]
+    editions.append({"date": "2026-11-13", "number": 21, "headline": "Today", "links": ["https://x.example/today"]})
+    previous, links, titles = collect_module.past_editions({"editions": editions}, dt.date(2026, 11, 13))
+    assert len(previous) == 20 and previous[0]["date"] == "2026-10-20"
+    assert "Headline 20" in titles and "Title 7" in titles and "Collected 7" in titles
+    assert "Headline 6" not in titles and "Title 6" not in titles, "editions older than 14 must not block"
+    assert "https://x.example/7" in links and "https://x.example/6" not in links
+    assert "Today" not in titles and "https://x.example/today" not in links  # a reissue may reuse its own stories
+
+
+def test_past_editions_understands_legacy_keys(collect_module):
+    idx = {"edicoes": [{"data": "2026-11-12", "numero": 1, "manchete": "Copom mantém Selic", "titulos": ["Outro"]}]}
+    _, _, titles = collect_module.past_editions(idx, dt.date(2026, 11, 13))
+    assert titles == ["Copom mantém Selic", "Outro"]
+
+
+def test_recent_story_is_still_dropped(collect_module, offline, config):
+    offline["news.google.com"] = rss(("Central bank holds rates steady again", "https://n.example/1", 1, "A"))
+    config["sections"] = config["sections"][:1]
+    _, _, titles = collect_module.past_editions(
+        {"editions": [{"date": "2026-11-12", "source_titles": ["Central bank holds rates steady"]}]},
+        dt.date(2026, 11, 13))
+    news, _ = collect_module.collect_news(config, 48, NOW, set(), titles, UTC)
+    assert news["tech"] == []
+
+
+# ---------------------------------------------------------------- the reader's "avoid" list
+
+@pytest.mark.parametrize("text, avoid, hit", [
+    ("New software and hardware win an award", ["war"], False),
+    ("Case studies on Battlefield executives in Bombay", ["dies", "battle", "execu", "bomb"], False),
+    ("The war ended in 1945", ["war"], True),
+    ("A GUERRA terminou", ["guerra"], True),
+    ("Eleição municipal é adiada", ["eleicao"], True),
+    ("Real Madrid wins again", ["real madrid"], True),
+    ("A real story from Madrid", ["real madrid"], False),
+    ("Anything at all", [], False),
+])
+def test_avoid_matches_whole_words(collect_module, text, avoid, hit):
+    assert collect_module.avoided(text, collect_module.phrases(avoid)) is hit
+
+
+def test_avoid_list_filters_news(collect_module, offline, config):
+    offline["news.google.com"] = rss(
+        ("Software update fixes award page", "https://n.example/1", 1, "A"),
+        ("Trade war escalates overnight", "https://n.example/2", 2, "B"),
+        ("Football club signs striker", "https://n.example/3", 3, "C"))
+    config["avoid"] = ["war"]
+    config["sections"] = [dict(config["sections"][0], avoid=["football"])]
+    news, _ = collect_module.collect_news(config, 48, NOW, set(), [], UTC)
+    assert [n["title"] for n in news["tech"]] == ["Software update fixes award page"]
+
+
+HISTORY_EVENTS = {"events": [
+    {"year": 1945, "text": "The war ends with a peace treaty.", "pages": []},
+    {"year": 1985, "text": "A software company releases its first hardware.", "pages": []}]}
+
+
+def test_history_filters_nothing_by_default(collect_module, offline, config):
+    offline["wikipedia.org"] = json.dumps(HISTORY_EVENTS)
+    hist = collect_module.collect_history(dt.date(2026, 11, 13), config, [])
+    assert len(hist) == 2
+
+
+def test_history_respects_the_avoid_list(collect_module, offline, config):
+    offline["wikipedia.org"] = json.dumps(HISTORY_EVENTS)
+    config["avoid"] = ["war"]
+    hist = collect_module.collect_history(dt.date(2026, 11, 13), config, [])
+    assert [h["year"] for h in hist] == [1985]
+
+
+def test_no_built_in_filter_list(collect_module):
+    assert not hasattr(collect_module, "AVOID_HISTORY")
+
+
 # ---------------------------------------------------------------- weather
 
 WTTR = {"weather": [{"maxtempC": "27", "mintempC": "17", "hourly": [

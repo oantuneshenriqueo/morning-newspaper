@@ -3,7 +3,8 @@
 
 In one pass, without spending model tokens, it fetches:
   - candidate stories per section (Google News RSS searches + direct RSS feeds from config.json),
-    already filtered by date window and with stories from past editions removed;
+    already filtered by date window, with stories from recent editions removed, taking turns
+    between the searches so one busy search cannot crowd out the others;
   - today's weather forecast (wttr.in, with Open-Meteo as a fallback);
   - "On this day" candidates (Wikipedia, in the reader's language when available).
 
@@ -40,14 +41,9 @@ except Exception:  # pragma: no cover
 UA = "morning-newspaper/3.0 (personal newspaper; RSS reader)"
 TIMEOUT = 12
 MAX_BYTES = 5_000_000
-# History events to skip (wars, deaths, disasters) in en / pt / es, matched on accent-free lowercase text.
-AVOID_HISTORY = (
-    "war", "kill", "dead", "death", "dies", "died", "massacre", "murder", "bomb", "earthquake", "crash",
-    "attack", "terror", "genocide", "battle", "invade", "invasion", "shooting", "explosion", "fire ",
-    "guerra", "morre", "morte", "mortos", "mortas", "morreu", "matando", "ataque", "assassin", "bomba",
-    "terremoto", "sismo", "acidente", "atentado", "execu", "genoc", "batalha", "invas", "invad",
-    "feridos", "vitimas", "naufrag", "explos", "incendio", "caiu", "cai no", "cai em", "sequestr",
-    "muere", "muerte", "muertos", "asesin", "ataque", "batalla", "heridos", "victimas")
+# Stories are only compared against the latest editions: a headline from months ago must not
+# block today's news on a recurring subject (same number assemble.py keeps titles/links for).
+DEDUP_EDITIONS = 14
 
 
 # "Did you know?" rotates through one theme per day so the box does not keep landing on the same
@@ -116,6 +112,31 @@ def same_story(a, b):
     return len(pa & pb) / min(len(pa), len(pb)) >= 0.6
 
 
+def phrases(lst):
+    """Reader's "avoid" list, normalized (lowercase, no accents) for whole-word matching."""
+    return [" ".join(words(p)) for p in lst or [] if words(str(p))]
+
+
+def avoided(text, avoid):
+    """True if any avoided word or phrase appears in the text as whole words
+    ("war" matches "the war ended", never "software")."""
+    n = f" {' '.join(words(text))} "
+    return any(f" {p} " in n for p in avoid)
+
+
+def past_editions(index, day):
+    """What recent editions already printed: (previous editions newest first, links, titles)."""
+    editions = index.get("editions") or index.get("edicoes") or []
+    previous = sorted((e for e in editions if (e.get("date") or e.get("data")) != day.isoformat()),
+                      key=lambda e: e.get("date") or e.get("data") or "", reverse=True)
+    recent = previous[:DEDUP_EDITIONS]
+    links = {l for e in recent for l in e.get("links", [])}
+    titles = [t for e in recent
+              for t in [e.get("headline") or e.get("manchete") or "", *(e.get("titles") or e.get("titulos") or []),
+                        *(e.get("source_titles") or [])] if t]
+    return previous, links, titles
+
+
 # ---------------------------------------------------------------- news
 
 def google_news_url(query, days, loc):
@@ -167,14 +188,14 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
         for f in sec.get("feeds", []):
             if str(f).startswith("https://"):
                 tasks.append((sec["id"], f))
-    raw = {s["id"]: [] for s in cfg["sections"]}
+    results = [[] for _ in tasks]
     failures = []
     with cf.ThreadPoolExecutor(max_workers=8) as ex:
-        fut = {ex.submit(read_rss, u): (sid, u) for sid, u in tasks}
+        fut = {ex.submit(read_rss, u): i for i, (_, u) in enumerate(tasks)}
         for f in cf.as_completed(fut):
-            sid, u = fut[f]
+            sid, u = tasks[fut[f]]
             try:
-                raw[sid].extend(f.result())
+                results[fut[f]] = f.result()
             except Exception as e:
                 failures.append(f"{sid}: {urllib.parse.urlparse(u).netloc} ({type(e).__name__} {getattr(e, 'code', '')})".replace(" )", ")"))
     cutoff = now - dt.timedelta(hours=window_h)
@@ -182,17 +203,27 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
     out = {}
     for sec in cfg["sections"]:
         sid = sec["id"]
-        kept = []
-        for it in sorted(raw[sid], key=lambda x: x["date"] or cutoff, reverse=True):
-            if it["date"] is None or it["date"] < cutoff or it["url"] in used_links:
+        avoid = phrases(list(cfg.get("avoid") or []) + list(sec.get("avoid") or []))
+        # One queue per search/feed, newest first, already cleared of old, repeated and avoided stories.
+        queues = []
+        for i, (task_sid, _) in enumerate(tasks):
+            if task_sid != sid:
                 continue
-            if any(same_story(it["title"], t) for t in used_titles):
-                continue
-            if any(same_story(it["title"], k["title"]) for k in kept):
-                continue
-            kept.append(it)
-            if len(kept) >= sec.get("max_candidates", 10):
-                break
+            ok = [it for it in results[i]
+                  if it["date"] is not None and it["date"] >= cutoff and it["url"] not in used_links
+                  and not avoided(f"{it['title']} {it['summary']}", avoid)
+                  and not any(same_story(it["title"], t) for t in used_titles)]
+            queues.append(sorted(ok, key=lambda x: x["date"], reverse=True))
+        # Take turns: the newest story of each search, then the second of each, and so on.
+        kept, limit, depth = [], sec.get("max_candidates", 10), 0
+        while len(kept) < limit and any(depth < len(q) for q in queues):
+            for q in queues:
+                if depth < len(q) and len(kept) < limit:
+                    it = q[depth]
+                    if not any(it["url"] == k["url"] or same_story(it["title"], k["title"]) for k in kept):
+                        kept.append(it)
+            depth += 1
+        kept.sort(key=lambda x: x["date"], reverse=True)
         out[sid] = [{"id": f"{pre[sid]}{i}", "title": it["title"], "outlet": it["outlet"], "url": it["url"],
                      "date": it["date"].astimezone(tz).strftime("%Y-%m-%d %H:%M"), "summary": it["summary"]}
                     for i, it in enumerate(kept, 1)]
@@ -272,11 +303,12 @@ def collect_history(day, cfg, used):
     d = json.loads(fetch(url))
     pref = [" ".join(words(p)) for p in cfg.get("history_keywords", [])]
     used_n = [" ".join(words(u)) for u in used if u]
+    avoid = phrases(cfg.get("avoid"))  # nothing is filtered unless the reader asked for it
     cands = []
     for ev in d.get("events", []):
         txt = clean(ev.get("text", ""), 260)
         n = " ".join(words(txt))
-        if not txt or any(x in n for x in AVOID_HISTORY):
+        if not txt or avoided(txt, avoid):
             continue
         if any(u and (n in u or u in n or same_story(n, u)) for u in used_n):
             continue
@@ -309,10 +341,7 @@ def main():
         with open(a.index, encoding="utf-8") as f:
             index = json.load(f)
     editions = index.get("editions") or index.get("edicoes") or []
-    previous = [e for e in editions if (e.get("date") or e.get("data")) != day.isoformat()]
-    used_links = {l for e in previous for l in e.get("links", [])}
-    used_titles = [e.get("headline") or e.get("manchete") or "" for e in previous] + \
-                  [t for e in previous for t in (e.get("titles") or e.get("titulos") or [])]
+    previous, used_links, used_titles = past_editions(index, day)
     extras = [(e.get("extras") or {}) for e in previous]
     used_history = [x.get("history") or x.get("historia") or "" for x in extras]
     used_didyouknow = [x.get("did_you_know") or x.get("voce_sabia") or "" for x in extras]

@@ -8,13 +8,14 @@ Inputs: WORK/edition.json (format in references/edition-format.md), WORK/collect
 Output, if every check passes:
   WORK/archive/editions/YYYY-MM-DD.html
   WORK/archive/editions/index.json     (previous index + the new entry on top)
-  WORK/archive/index.html              (only when the newsstand is new)
-  WORK/archive/config.json             (only when the newsstand is new, or with --with-config)
+  WORK/archive/index.html              (when the newsstand is new or legacy, or with --with-page)
+  WORK/archive/config.json             (when the newsstand is new or legacy, or with --with-config)
 and the list of files to publish. If anything fails it prints the errors, writes nothing and exits 1.
 
 Standard library only. No network access.
 Usage:
-  python3 assemble.py --skill SKILL_DIR --config config.json --work WORK_DIR [--index index.json] [--with-config]
+  python3 assemble.py --skill SKILL_DIR --config config.json --work WORK_DIR [--index index.json]
+                      [--with-config] [--with-page] [--sample]
 """
 import argparse
 import datetime as dt
@@ -48,6 +49,31 @@ SVG_ICON = {
     "robot": f'<rect x="14" y="20" width="28" height="22" {_S}/><path d="M28 12v8M10 28v8M46 28v8M22 36h12" {_S}/><circle cx="28" cy="11" r="2" {_S}/><circle cx="22" cy="29" r="2.5" {_S}/><circle cx="34" cy="29" r="2.5" {_S}/>',
     "newspaper": f'<rect x="10" y="12" width="36" height="32" {_S}/><path d="M16 20h24M16 26h10M16 32h10M16 38h10M30 26h10v12H30z" {_S}/>',
 }
+
+
+# Older newsstands wrote the index in Portuguese (edicoes/indice.json). Entries are always
+# rewritten with the current keys, so an index never mixes the two spellings.
+LEGACY_INDEX_KEYS = ("edicoes", "fundado_em", "jornal")
+LEGACY_KEYS = {"data": "date", "numero": "number", "dia_semana": "weekday", "tipo": "type", "manchete": "headline",
+               "resumo": "summary", "arquivo": "file", "titulos": "titles"}
+LEGACY_EXTRAS = {"historia": "history", "voce_sabia": "did_you_know"}
+LEGACY_TYPES = {"fim de semana": "weekend", "manhã": "morning", "manha": "morning", "amostra": "sample"}
+DEDUP_EDITIONS = 14  # titles/links only exist to avoid repeats: kept for the latest editions only
+
+
+def _renamed(d, table):
+    out = {table[k]: v for k, v in d.items() if k in table}
+    out.update({k: v for k, v in d.items() if k not in table})  # a current key wins over its legacy twin
+    return out
+
+
+def normalize_entry(e):
+    out = _renamed(e, LEGACY_KEYS)
+    if isinstance(out.get("extras"), dict):
+        out["extras"] = _renamed(out["extras"], LEGACY_EXTRAS)
+    if out.get("type") in LEGACY_TYPES:
+        out["type"] = LEGACY_TYPES[out["type"]]
+    return out
 
 
 def svg(drawing, size):
@@ -169,6 +195,7 @@ def main():
     ap.add_argument("--work", required=True)
     ap.add_argument("--index", help="current index.json of the newsstand; omit if it does not exist yet")
     ap.add_argument("--with-config", action="store_true", help="also write config.json into the output to publish")
+    ap.add_argument("--with-page", action="store_true", help="also write index.html (the newsstand page) into the output to publish")
     ap.add_argument("--sample", action="store_true",
                     help="sample edition for a reader with no setup yet: adds the setup notice and never publishes config.json")
     a = ap.parse_args()
@@ -197,16 +224,17 @@ def main():
     if a.index and os.path.exists(a.index):
         with open(a.index, encoding="utf-8") as f:
             index = json.load(f)
-    old = (index or {}).get("editions") or (index or {}).get("edicoes") or []
+    legacy = bool(index) and any(k in index for k in LEGACY_INDEX_KEYS)
+    old = [normalize_entry(e) for e in (index or {}).get("editions") or (index or {}).get("edicoes") or []]
 
     def d_of(e):
-        return e.get("date") or e.get("data")
+        return e.get("date")
 
     day = dt.date.fromisoformat(ed.get("date") or collected.get("date"))
     previous = [e for e in old if d_of(e) != day.isoformat()]
     existing = next((e for e in old if d_of(e) == day.isoformat()), None)
-    number = (existing.get("number") or existing.get("numero")) if existing else \
-        max([e.get("number") or e.get("numero") or 0 for e in previous] + [0]) + 1
+    number = existing.get("number") if existing and existing.get("number") else \
+        max([e.get("number") or 0 for e in previous] + [0]) + 1
     founded = dt.date.fromisoformat((index or {}).get("founded") or (index or {}).get("fundado_em") or day.isoformat())
     year_n = (day.year - founded.year) - ((day.month, day.day) < (founded.month, founded.day)) + 1
     weekend = day.weekday() >= 5
@@ -389,6 +417,8 @@ def main():
         "extras": {"history": hist.get("summary") or hist.get("text", "")[:140],
                    "did_you_know": dyk.get("summary") or dyk.get("text", "")[:140]},
         "titles": [n.get("title", "") for n in stories[1:]],
+        # The titles as collected (before rewriting): what the next collections are compared against.
+        "source_titles": [refs[n["ref"]].get("title", "") for n in stories if n.get("ref") in refs],
         "links": [n.get("url", "") for n in stories],
     }
     archive_labels = {k: L[k] for k in ("html_lang", "archive_title", "archive_kicker", "archive_subtitle",
@@ -397,8 +427,8 @@ def main():
     new = {"newspaper": news_name, "founded": (index or {}).get("founded") or (index or {}).get("fundado_em")
            or day.isoformat(), "labels": archive_labels, "editions": [entry] + previous}
     new["editions"].sort(key=d_of, reverse=True)
-    for e in new["editions"][14:]:  # titles/links only exist to avoid repeats: keep the last 14 editions
-        for k in ("titles", "links", "titulos"):
+    for e in new["editions"][DEDUP_EDITIONS:]:
+        for k in ("titles", "source_titles", "links"):
             e.pop(k, None)
 
     dest = os.path.join(a.work, "archive")
@@ -408,11 +438,15 @@ def main():
     with open(os.path.join(dest, "editions", "index.json"), "w", encoding="utf-8") as f:
         json.dump(new, f, ensure_ascii=False, indent=1)
     publish = [f"editions/{day.isoformat()}.html", "editions/index.json"]
-    if index is None:
+    if index is None or legacy or a.with_page:
         shutil.copy(os.path.join(a.skill, "assets", "archive.html"), os.path.join(dest, "index.html"))
         publish.insert(0, "index.html")
+    if index is None:
         print("NEW NEWSSTAND: create the artifact with the files below.")
-    if (index is None or a.with_config) and not sample:
+    elif legacy:
+        print("LEGACY NEWSSTAND MIGRATED: the index now lives in editions/index.json. Publish every file below "
+              "and, if the tool can delete files, remove edicoes/indice.json in the same call.")
+    if (index is None or legacy or a.with_config) and not sample:
         shutil.copy(a.config, os.path.join(dest, "config.json"))
         publish.append("config.json")
     print(f"OK: {L['issue_label']} {number:03d} · {day.isoformat()} · {total} stories"

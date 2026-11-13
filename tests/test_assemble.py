@@ -134,7 +134,70 @@ def test_dedup_data_kept_only_for_last_14_editions(assembler):
     eds = assembler.new_index()["editions"]
     assert len(eds) == 21
     assert all("titles" in e for e in eds[:14])
-    assert not any("titles" in e or "links" in e for e in eds[14:])
+    assert not any("titles" in e or "links" in e or "source_titles" in e for e in eds[14:])
+
+
+def test_index_keeps_the_collected_titles(assembler, collected):
+    """Collection compares new stories with the titles as collected, not the rewritten ones."""
+    ok(assembler.run())
+    entry = assembler.new_index()["editions"][0]
+    assert entry["source_titles"][0] == collected["news"]["tech"][0]["title"]
+    assert len(entry["source_titles"]) == 5
+
+
+# ---------------------------------------------------------------- legacy newsstands
+
+LEGACY_INDEX = {"jornal": "Folha Antiga", "fundado_em": "2026-11-01", "edicoes": [
+    {"data": "2026-11-12", "numero": 7, "dia_semana": "quinta-feira", "tipo": "fim de semana",
+     "manchete": "Manchete antiga", "resumo": "agenda livre", "arquivo": "edicoes/2026-11-12.html",
+     "titulos": ["Um", "Dois"], "links": ["https://old.example/1"],
+     "extras": {"historia": "Em 1990...", "voce_sabia": "O mouse..."}}]}
+
+
+def test_legacy_newsstand_is_migrated(assembler):
+    proc = ok(assembler.run(index=LEGACY_INDEX))
+    assert "LEGACY NEWSSTAND MIGRATED" in proc.stdout
+    assert "edicoes/indice.json" in proc.stdout
+    for name in ("index.html", "config.json", "editions/index.json", "editions/2026-11-13.html"):
+        assert (proc.archive / name).exists(), name
+        assert f"  {name} -> " in proc.stdout, f"{name} missing from the PUBLISH list"
+    idx = assembler.new_index()
+    assert idx["founded"] == "2026-11-01"
+    assert not {"edicoes", "fundado_em", "jornal"} & set(idx)
+    new, old = idx["editions"]
+    assert new["number"] == 8
+    assert old == {"date": "2026-11-12", "number": 7, "weekday": "quinta-feira", "type": "weekend",
+                   "headline": "Manchete antiga", "summary": "agenda livre", "file": "edicoes/2026-11-12.html",
+                   "titles": ["Um", "Dois"], "links": ["https://old.example/1"],
+                   "extras": {"history": "Em 1990...", "did_you_know": "O mouse..."}}
+
+
+def test_legacy_sample_edition_never_publishes_config(assembler):
+    proc = ok(assembler.run("--sample", index=LEGACY_INDEX))
+    assert (proc.archive / "index.html").exists()
+    assert not (proc.archive / "config.json").exists()
+
+
+def test_mixed_keys_are_normalized_without_a_migration(assembler):
+    mixed = {"founded": "2026-11-01", "editions": [
+        {"date": "2026-11-12", "number": 2, "headline": "New keys"},
+        {"data": "2026-11-11", "numero": 1, "manchete": "Old keys", "arquivo": "edicoes/2026-11-11.html"}]}
+    proc = ok(assembler.run(index=mixed))
+    assert "LEGACY" not in proc.stdout
+    assert not (proc.archive / "index.html").exists()
+    eds = assembler.new_index()["editions"]
+    assert [e["number"] for e in eds] == [3, 2, 1]
+    assert eds[2]["headline"] == "Old keys" and eds[2]["file"] == "edicoes/2026-11-11.html"
+    legacy_keys = {"data", "numero", "manchete", "arquivo", "titulos", "resumo", "tipo", "dia_semana"}
+    assert not any(legacy_keys & set(e) for e in eds)
+
+
+def test_with_page_republishes_the_newsstand_page(assembler):
+    old = {"founded": "2026-11-10", "editions": [{"date": "2026-11-12", "number": 1}]}
+    proc = ok(assembler.run("--with-page", index=old))
+    assert (proc.archive / "index.html").exists()
+    assert "  index.html -> " in proc.stdout
+    assert not (proc.archive / "config.json").exists()
 
 
 def test_missing_agenda_key_hides_the_box(assembler):
