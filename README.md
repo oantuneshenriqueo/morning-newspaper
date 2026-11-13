@@ -63,7 +63,7 @@ docs/brand/                   banner, logo and emblem (SVG)
 
 - Add a language: copy `morning-newspaper/assets/i18n/en.json` to `<code>.json` and translate the values. Keep the `{placeholders}` and the order of weekdays (Monday first) and months.
 - After changing the skill, run `./build-zip.sh` so `dist/` stays in sync.
-- Releases are automatic: bumping the number in `VERSION` (or pushing a tag like `v1.1.0`) runs `.github/workflows/release.yml`, which rebuilds the zip and publishes the release with notes from the commits. It can also be run by hand from the Actions tab.
+- Releases are automatic: bumping the number in `VERSION` (or pushing a tag like `v1.1.0`) runs `.github/workflows/release.yml`, which rebuilds the zip and publishes the release using the matching section of `CHANGELOG.md` as its notes. Add a `## vX.Y.Z` section there before bumping `VERSION`. It can also be run by hand from the Actions tab.
 - Never commit a real `config.json`, edition or newsstand index: they contain personal data. `.gitignore` already blocks them.
 
 The scripts use only the Python standard library.

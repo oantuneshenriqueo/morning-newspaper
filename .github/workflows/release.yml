@@ -2,7 +2,8 @@ name: Release
 
 # Publishes a GitHub release with a freshly built morning-newspaper.zip.
 # Three ways to trigger it:
-#   1. Change the VERSION file on main (e.g. 1.1.0) and push the commit
+#   1. Change the VERSION file (e.g. 1.1.0) or CHANGELOG.md on main and push the commit
+# Release notes come from the matching "## v1.1.0" section of CHANGELOG.md.
 #   2. Push a version tag:      git tag v1.1.0 && git push origin v1.1.0
 #   3. Run it by hand:          Actions tab -> Release -> Run workflow -> type the version (e.g. v1.1.0)
 
@@ -12,6 +13,7 @@ on:
       - main
     paths:
       - VERSION
+      - CHANGELOG.md
     tags:
       - "v*"
   workflow_dispatch:
@@ -51,17 +53,35 @@ jobs:
       - name: Build the skill zip
         run: sh ./build-zip.sh
 
+      - name: Pick the release notes from CHANGELOG.md
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # Everything under "## <tag>" up to the next "## " heading.
+          awk -v tag="$TAG" '
+            /^## / { if (found) exit; split($2, a, " "); if (a[1] == tag) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ -s notes.md ] && grep -q '[^[:space:]]' notes.md; then
+            echo "Using the $TAG section of CHANGELOG.md"
+          else
+            echo "::warning::No '## $TAG' section in CHANGELOG.md; using GitHub's generated notes"
+            rm -f notes.md
+          fi
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; updating its zip."
+            echo "Release $TAG already exists; updating its zip and notes."
             gh release upload "$TAG" dist/morning-newspaper.zip --clobber
+            if [ -f notes.md ]; then gh release edit "$TAG" --notes-file notes.md; fi
           else
+            if [ -f notes.md ]; then NOTES="--notes-file notes.md"; else NOTES="--generate-notes"; fi
             gh release create "$TAG" dist/morning-newspaper.zip \
               --target "$GITHUB_SHA" \
               --title "Morning Newspaper $TAG" \
-              --generate-notes
+              $NOTES
           fi
