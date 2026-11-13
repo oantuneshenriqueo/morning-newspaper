@@ -22,8 +22,8 @@ def test_changelog_has_a_section_for_this_version():
         f"CHANGELOG.md needs a '## v{VERSION}' section (the release notes come from it)"
 
 
-@pytest.mark.xfail(reason="known bug: collect.py User-Agent still says 3.0 instead of the VERSION file")
 def test_user_agent_matches_version():
+    """Bump the User-Agent in collect.py together with VERSION."""
     source = (SKILL / "scripts" / "collect.py").read_text(encoding="utf-8")
     assert f"morning-newspaper/{VERSION}" in source
 
@@ -58,8 +58,9 @@ def test_every_referenced_file_exists():
 
 def test_config_example_is_complete():
     cfg = json.loads((SKILL / "references" / "config.example.json").read_text(encoding="utf-8"))
-    for key in ("language", "timezone", "newspaper", "city", "sections", "total_news"):
+    for key in ("language", "timezone", "newspaper", "city", "sections", "total_news", "avoid"):
         assert key in cfg, key
+    assert cfg["avoid"] == [], "the example must not filter anything by default"
     ids = [s["id"] for s in cfg["sections"]]
     assert len(ids) == len(set(ids)), "section ids must be unique"
     for sec in cfg["sections"]:
@@ -81,3 +82,12 @@ def test_build_zip(tmp_path):
     assert "morning-newspaper/scripts/assemble.py" in names
     assert all(n.startswith("morning-newspaper/") for n in names)
     assert not any(n.endswith("config.json") or "__pycache__" in n or n.endswith(".pyc") for n in names)
+
+
+def test_setup_does_not_ask_for_the_newspaper_name():
+    """Readers rename the newspaper on request; setup only asks topics, time, subjects to avoid and city."""
+    setup = (SKILL / "references" / "setup.md").read_text(encoding="utf-8")
+    screen2 = setup[setup.index("**Screen 2**"):setup.index("**Then one line of text**")]
+    assert "name" not in screen2.lower()
+    for option in ("Don't schedule for now", "Another time", "(Recommended)"):
+        assert option in setup, option

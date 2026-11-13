@@ -2,6 +2,26 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## v1.2.0 — 2026-11-13
+
+### New
+- **Clickable setup**: when your Claude app shows multiple-choice questions, the setup is a couple of clicks. "Personalize" is now the recommended path and takes about a minute: topics, delivery time and subjects you would rather not see, then your city.
+- **No schedule required**: pick "Don't schedule for now" and ask for the paper whenever you like. Until it is scheduled, each edition reminds you that you can say "schedule my newspaper" at any time. The schedule is never created unless you ask for it.
+- **Subjects to avoid**: an optional `avoid` list in your config hides news and "On this day" facts on subjects you would rather not see. It matches whole words only, and the setup shows you the exact words so you can change them.
+
+### Fixed
+- **Older newsstands are migrated** automatically: the old index (`edicoes/indice.json`) is rewritten with the current format, and the newsstand page and your config are published again. A config in the scheduled task prompt is now used instead of producing a sample edition.
+- **Publishing no longer fails** because the newsstand was not read first: its files are always listed before publishing, with one retry.
+- **Every search gets a fair share**: a busy search can no longer fill all of a section's candidates and hide the others.
+- **Recurring news is no longer blocked forever**: stories are compared only with the last 14 editions, using the titles as they were collected.
+- **"On this day" no longer drops harmless facts**: the built-in word filter (where "war" also hid "software") was removed; only your own `avoid` list filters anything.
+
+### Changed
+- The setup no longer asks for the newspaper's name. It uses the default for your language; just ask Claude if you want another one.
+
+### Project
+- Automated tests run on every change, and a release is only published when they pass.
+
 ## v1.1.0 — 2026-11-13
 
 ### New

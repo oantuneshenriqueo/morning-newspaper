@@ -32,9 +32,9 @@ Connect **Google Calendar** and **Gmail** if you want the agenda and the classif
 Ask Claude for *"my morning newspaper"* (in any language). Claude first checks whether Google Calendar and Gmail are connected and offers to connect them, then gives you two ways to start:
 
 - **Quick start:** just tell it your city. Everything else uses the defaults and can be changed later.
-- **Personalize:** up to six short questions (your name, city, topics, the newspaper's name, the time you want it ready and, optionally, subjects you would rather not see).
+- **Personalize (recommended, about a minute):** pick your topics, the time you want it ready (or no schedule for now) and, optionally, subjects you would rather not see, by clicking the options when your Claude app shows them, then tell it your city.
 
-It then prints edition No. 001, creates your newsstand and offers to schedule a daily edition. Your answers are saved as `config.json` **only inside your private newsstand**; nothing is sent or shared, and nothing goes into this repository. See [`references/config.example.json`](morning-newspaper/references/config.example.json) for the format.
+It then prints edition No. 001 and creates your newsstand. If you picked a time, the daily edition is scheduled; if not, just ask *"schedule my newspaper"* whenever you want it every morning. To rename the newspaper, simply ask. Your answers are saved as `config.json` **only inside your private newsstand**; nothing is sent or shared, and nothing goes into this repository. See [`references/config.example.json`](morning-newspaper/references/config.example.json) for the format.
 
 If a daily run is scheduled before the newspaper was ever set up, you still get a paper: a **sample edition** with the default sections and a short notice at the top explaining how to set it up.
 
@@ -65,7 +65,7 @@ docs/brand/                   banner, logo and emblem (SVG)
 - Add a language: copy `morning-newspaper/assets/i18n/en.json` to `<code>.json` and translate the values. Keep the `{placeholders}` and the order of weekdays (Monday first) and months.
 - After changing the skill, run `./build-zip.sh` so `dist/` stays in sync. `dist/` follows `main` and can hold unreleased changes; users should install from Releases.
 - Versions follow [Semantic Versioning](https://semver.org): PATCH for fixes, MINOR for new features that keep existing configs and newsstands working, MAJOR when updating requires the user to change something (the changelog then explains how).
-- Releases are automatic: bumping the number in `VERSION` (or pushing a tag like `v1.1.0`) runs `.github/workflows/release.yml`, which rebuilds the zip and publishes the release using the matching section of `CHANGELOG.md` as its notes. Add a `## vX.Y.Z` section there before bumping `VERSION`. It can also be run by hand from the Actions tab.
+- Releases are automatic: bumping the number in `VERSION` (or pushing a tag like `v1.1.0`) runs `.github/workflows/release.yml`, which rebuilds the zip and publishes the release using the matching section of `CHANGELOG.md` as its notes. Add a `## vX.Y.Z` section there and update the User-Agent in `scripts/collect.py` in the same commit as `VERSION` (a test checks both). It can also be run by hand from the Actions tab.
 - Tests: `pip install pytest` and run `python -m pytest`. They run offline and also run on GitHub for every push and pull request; a release is only published when they pass. Known bugs are marked `xfail`; when you fix one, its test starts passing and the run fails until you remove the mark.
 - Never commit a real `config.json`, edition or newsstand index: they contain personal data. `.gitignore` already blocks them.
 

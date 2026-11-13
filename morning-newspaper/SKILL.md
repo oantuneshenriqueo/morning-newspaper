@@ -37,7 +37,7 @@ Gathering news, weather and "On this day", building the HTML, updating the newss
 
 ## Scheduling
 
-When the reader asks for a daily schedule (or, once, at the end of the first interactive run if none exists):
+When the reader asks for a daily schedule, or chose a delivery time during setup (`references/setup.md`). Never create one they did not ask for:
 - **No config yet?** Do not create the task first. Run `references/setup.md` (the quick start is fine), publish edition No. 001 so the reader sees what they will get, and only then create the schedule. A schedule created before setup would wake up to a sample edition instead of their paper.
 - Use the session's scheduled-task tool. Run a few minutes before the time they want the paper ready, in their timezone (`CRON_TZ=<config.timezone> 43 6 * * *` for a 7:00 paper).
 - The task prompt must be self-contained, written in the reader's language, and include the newsstand slug, e.g.: "Run the morning-newspaper skill and publish today's edition to the newsstand (slug: SLUG). Scheduled run: ask nothing, decide and go on."
@@ -107,7 +107,7 @@ Follow `references/archive.md` ("Adding today's edition"). Publish exactly the f
 ### 8. Deliver
 
 - First run (just after setup): the summary described at the end of `references/setup.md`.
-- Any other interactive run: one sentence with today's headline, in the reader's language (the artifact card already shows the link).
+- Any other interactive run: one sentence with today's headline, in the reader's language (the artifact card already shows the link). If no scheduled task runs this newspaper (check when the scheduled-task tools can list them), add one short line saying they can ask at any time to get it every morning ("schedule my newspaper").
 - Scheduled run: just publish; send no messages.
 
 ## Safety rules
