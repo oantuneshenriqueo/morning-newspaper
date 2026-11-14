@@ -321,3 +321,91 @@ def test_partial_failure_is_not_a_blocked_network(tmp_path, config):
     assert "NETWORK BLOCKED" not in proc.stdout
     assert "FAILURES:" in proc.stdout
     assert out["network_blocked"] is False and out["history"]
+
+
+# ---------------------------------------------------------------- hints for the model (v1.3)
+
+@pytest.mark.parametrize("a, b, hint", [
+    ("Paralisação de voos nos EUA deixa milhares sem embarque", "Estados Unidos suspendem voos após pane", True),
+    ("Galípolo: baixar juros é um desafio pedagógico",
+     "Presidente do BC, Galípolo resiste à pressão por cortes de juros", True),
+    ("Google lança Gemini 4 Hydrogen, IA gratuita", "Google lança Pixel 11 com nova câmera", False),
+    ("Copom mantém Selic em 15%", "Caixa estuda subir juros da casa própria", False),
+])
+def test_related_marks_the_same_fact_in_other_words(collect_module, a, b, hint):
+    assert collect_module.related(a, b) is hint
+
+
+@pytest.mark.parametrize("title, outlet, junk", [
+    ("- Jornal Panorama", "Jornal Panorama Minas", True),
+    ("Jornal Panorama", "Jornal Panorama", True),
+    ("", "Any", True),
+    ("Prefeitura abre vagas na saúde", "Jornal Panorama", False),
+])
+def test_junk_titles(collect_module, title, outlet, junk):
+    assert collect_module.junk_title(title, outlet) is junk
+
+
+@pytest.mark.parametrize("title, flagged", [
+    ("IPCA: inflação oficial fecha junho com índice de 0,16%", True),
+    ("Inflação de outubro surpreende", False),
+    ("Feira volta em dezembro", False),
+    ("May sales rise", False),          # "May" is too common an English word to count
+    ("Prices fell in March", True),
+])
+def test_other_month(collect_module, title, flagged):
+    assert collect_module.other_month(title, dt.date(2026, 11, 13)) is flagged
+
+
+def test_feed_drops_junk_and_trailing_dash(collect_module, offline):
+    offline["feed.example"] = rss(("- Jornal Panorama", "https://n.example/1", 1, "Jornal Panorama Minas"),
+                                  ("Ponte reaberta no centro -", "https://n.example/2", 1, None))
+    assert [i["title"] for i in collect_module.read_rss("https://feed.example/rss")] == ["Ponte reaberta no centro"]
+
+
+def test_collect_news_flags_twins_old_months_and_the_city(collect_module, offline, config):
+    config["city"]["name"] = "Lagoa da Prata"
+    config["sections"] = [dict(config["sections"][1], queries=['"Lagoa da Prata"'])]
+    offline["news.google.com"] = rss(
+        ("Festa em Divinópolis reúne milhares", "https://n.example/1", 1, "A"),
+        ("Oito foragidos presos no Centro-Oeste de Minas", "https://n.example/2", 2, "B"),
+        ("Polícia captura foragidos no Centro-Oeste mineiro", "https://n.example/3", 3, "C"),
+        ("IPCA fecha junho em alta", "https://n.example/4", 4, "D"),
+        ("TJMG visita Cejusc de Lagoa da Prata", "https://n.example/5", 5, "E"))
+    news, _ = collect_module.collect_news(config, 48, NOW, set(), [], UTC)
+    items = news["local"]
+    assert items[0]["title"] == "TJMG visita Cejusc de Lagoa da Prata"  # names the city: listed first
+    assert "city" in items[0]["flags"]
+    by_title = {n["title"]: n for n in items}
+    first = by_title["Oito foragidos presos no Centro-Oeste de Minas"]["id"]
+    assert by_title["Polícia captura foragidos no Centro-Oeste mineiro"]["same_as"] == first
+    assert "old month?" in by_title["IPCA fecha junho em alta"]["flags"]
+
+
+def test_history_flags_flattened_numbers(collect_module, offline, config):
+    offline["wikipedia.org"] = json.dumps({"events": [
+        {"year": 1996, "text": "Descoberto o primo de Mersenne 21398269−1.", "pages": []}]})
+    assert collect_module.collect_history(dt.date(2026, 11, 13), config, [])[0]["check_numbers"] is True
+
+
+def test_reissue_does_not_repeat_the_morning_extras(tmp_path, collect_module, config, offline, monkeypatch):
+    """The morning's own "On this day" is skipped by an evening reissue of the same date."""
+    index = {"editions": [{"date": "2026-11-13", "number": 3,
+                           "extras": {"history": "Em 1996, o GIMPS achou um primo de Mersenne.", "did_you_know": "hello"}}]}
+    offline["wikipedia.org"] = json.dumps({"events": [
+        {"year": 1996, "text": "Em 1996, o GIMPS achou um primo de Mersenne.", "pages": []},
+        {"year": 1971, "text": "Lançada a sonda Mariner 9.", "pages": []}]})
+    offline["news.google.com"] = rss()
+    offline["wttr.in"] = OSError("offline")
+    cfg = tmp_path / "config.json"
+    config["city"] = {}
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    idx = tmp_path / "index.json"
+    idx.write_text(json.dumps(index), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["collect.py", "--config", str(cfg), "--work", str(tmp_path / "w"),
+                                      "--index", str(idx), "--date", "2026-11-13"])
+    collect_module.main()
+    out = json.loads((tmp_path / "w" / "collected.json").read_text(encoding="utf-8"))
+    assert out["reissue"] and out["number"] == 3
+    assert [h["text"] for h in out["history"]] == ["Lançada a sonda Mariner 9."]
+    assert out["did_you_know_used"] == ["hello"]

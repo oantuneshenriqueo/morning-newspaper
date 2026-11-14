@@ -112,6 +112,67 @@ def same_story(a, b):
     return len(pa & pb) / min(len(pa), len(pb)) >= 0.6
 
 
+# Names a country goes by in different titles ("EUA", "Estados Unidos", "US"): folded into one
+# token before comparing, so the same fact told with a different name is still recognized.
+ALIASES = [(r"\bestados unidos\b|\bunited states\b|\beeuu\b|\bee uu\b|\busa\b|\beua\b", " euaxx "),
+           (r"\breino unido\b|\bunited kingdom\b|\buk\b", " ukxxx "),
+           (r"\buniao europeia\b|\bunion europea\b|\beuropean union\b|\bue\b|\beu\b", " uexxx ")]
+# Words every headline uses, which say nothing about which fact it is.
+COMMON = {"para", "apos", "sobre", "como", "mais", "deixa", "anuncia", "lanca", "novo", "nova", "novos", "novas",
+          "pode", "podem", "sera", "desde", "durante", "contra", "segundo", "entre", "veja", "after", "with",
+          "from", "over", "says", "launches", "announces", "will", "could", "tras", "tiene", "nuevo", "nueva",
+          "anuncio", "despues", "este", "esta", "isso", "this", "that", "your", "seus", "suas"}
+
+
+def stems(txt):
+    """Meaningful words cut to their first 5 letters, so "paralisam" and "paralisação" match."""
+    n = " " + " ".join(words(re.sub(r"\bU\.?S\.?\b", " eua ", txt or ""))) + " "
+    for pat, rep in ALIASES:
+        n = re.sub(pat, rep, n)
+    return {w[:5] for w in n.split() if (len(w) > 3 and w not in COMMON) or w.isdigit()}
+
+
+def related(a, b):
+    """Looser than same_story: two titles that may tell the same fact in different words.
+    Only a hint for the model (printed as ≈a1); nothing is dropped because of it."""
+    pa, pb = stems(a), stems(b)
+    if not pa or not pb:
+        return False
+    shared = pa & pb
+    return len(shared) >= 2 and len(shared) / min(len(pa), len(pb)) >= 0.4
+
+
+def junk_title(title, outlet):
+    """Empty titles, or titles that are only the outlet's name ("- Jornal Panorama")."""
+    t = (title or "").strip(" -–—|·:")
+    tw = words(t)
+    return not tw or set(tw) <= set(words(outlet)) or len(tw) < 2
+
+
+MONTHS = {  # (lowercase names, accents kept) → month number; English needs a capital (not "May")
+    **{m: i for i, m in enumerate(["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
+                                   "setembro", "outubro", "novembro", "dezembro"], 1)},
+    **{m: i for i, m in enumerate(["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+                                   "septiembre", "octubre", "noviembre", "diciembre"], 1)},
+}
+MONTHS_EN = {m: i for i, m in enumerate(["January", "February", "March", "April", "", "June", "July", "August",
+                                         "September", "October", "November", "December"], 1) if m}
+
+
+def other_month(title, day):
+    """True if the title names a month that is not this one or a neighbour ("IPCA fecha junho" in
+    November): the story is probably old or republished even though its timestamp is recent."""
+    found = [MONTHS[w] for w in re.findall(r"\w+", (title or "").lower()) if w in MONTHS]
+    found += [MONTHS_EN[w] for w in re.findall(r"\w+", title or "") if w in MONTHS_EN]
+    near = {(day.month - 2) % 12 + 1, day.month, day.month % 12 + 1}
+    return any(m not in near for m in found)
+
+
+def names_city(text, city):
+    c = " ".join(words(city))
+    return bool(c) and f" {c} " in f" {' '.join(words(text))} "
+
+
 def phrases(lst):
     """Reader's "avoid" list, normalized (lowercase, no accents) for whole-word matching."""
     return [" ".join(words(p)) for p in lst or [] if words(str(p))]
@@ -157,6 +218,9 @@ def read_rss(url):
             title = title[: -len(" - " + outlet)]
         if not outlet:
             outlet = urllib.parse.urlparse(link).netloc.replace("www.", "")
+        title = re.sub(r"\s+[-–—|]\s*$", "", title).strip()  # a trailing " -" left by the outlet
+        if junk_title(title, outlet):
+            continue
         when = None
         if it.findtext("pubDate"):
             try:
@@ -224,9 +288,29 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
                         kept.append(it)
             depth += 1
         kept.sort(key=lambda x: x["date"], reverse=True)
-        out[sid] = [{"id": f"{pre[sid]}{i}", "title": it["title"], "outlet": it["outlet"], "url": it["url"],
-                     "date": it["date"].astimezone(tz).strftime("%Y-%m-%d %H:%M"), "summary": it["summary"]}
-                    for i, it in enumerate(kept, 1)]
+        # Local sections of a small town fill up with the region: the stories that name the city
+        # itself come first, so a busy neighbouring town cannot push them out of sight.
+        city = (cfg.get("city") or {}).get("name", "")
+        if city and any(names_city(q, city) for q in sec.get("queries", [])):
+            kept.sort(key=lambda x: not names_city(x["title"], city))
+        items = []
+        for i, it in enumerate(kept, 1):
+            n = {"id": f"{pre[sid]}{i}", "title": it["title"], "outlet": it["outlet"], "url": it["url"],
+                 "date": it["date"].astimezone(tz).strftime("%Y-%m-%d %H:%M"), "summary": it["summary"]}
+            flags = []
+            earlier = [p for lst in out.values() for p in lst] + items  # other sections count too
+            twin = next((p["id"] for p in earlier if related(it["title"], p["title"])), None)
+            if twin:
+                n["same_as"] = twin
+                flags.append(f"≈{twin}")
+            if other_month(it["title"], now.date()):
+                flags.append("old month?")
+            if city and names_city(it["title"], city):
+                flags.append("city")
+            if flags:
+                n["flags"] = flags
+            items.append(n)
+        out[sid] = items
     return out, failures
 
 
@@ -314,8 +398,10 @@ def collect_history(day, cfg, used):
             continue
         page = (ev.get("pages") or [{}])[0]
         link = ((page.get("content_urls") or {}).get("desktop") or {}).get("page", "")
-        cands.append({"year": ev.get("year"), "text": txt, "url": link,
-                      "score": sum(1 for p in pref if p and p in n)})
+        c = {"year": ev.get("year"), "text": txt, "url": link, "score": sum(1 for p in pref if p and p in n)}
+        if re.search(r"\d{7,}", txt):
+            c["check_numbers"] = True  # a flattened exponent or formula (2^1398269−1 → "21398269−1")
+        cands.append(c)
     cands.sort(key=lambda c: (-c["score"], -(c["year"] or 0)))
     return [{"id": f"h{i}", **{k: v for k, v in c.items() if k != "score"}} for i, c in enumerate(cands[:6], 1)]
 
@@ -342,7 +428,10 @@ def main():
             index = json.load(f)
     editions = index.get("editions") or index.get("edicoes") or []
     previous, used_links, used_titles = past_editions(index, day)
-    extras = [(e.get("extras") or {}) for e in previous]
+    # Extras of every edition, today's too: a reissue must not repeat the morning's
+    # "On this day" or "Did you know?" (its stories may come back; its extras should not).
+    extras = [(e.get("extras") or {}) for e in sorted(editions, key=lambda e: e.get("date") or e.get("data") or "",
+                                                       reverse=True)]
     used_history = [x.get("history") or x.get("historia") or "" for x in extras]
     used_didyouknow = [x.get("did_you_know") or x.get("voce_sabia") or "" for x in extras]
 
@@ -384,18 +473,24 @@ def main():
         print("WEATHER: no city configured (leave the weather out)")
     else:
         print("WEATHER: unavailable")
+    if any(n.get("flags") for lst in news.values() for n in lst):
+        print("FLAGS: ≈a1 = maybe the same fact as a1 (keep one) · old month? = the title names another"
+              " month (likely old news) · city = names the reader's city")
     for sec in cfg["sections"]:
         print(f"\n[{sec['id']}] {sec['title']}")
         for n in news.get(sec["id"], []):
             line = f"{n['id']} | {n['date'][5:]} | {n['outlet']} | {n['title']}"
             if n["summary"]:
                 line += f" — {n['summary']}"
+            if n.get("flags"):
+                line += f" [{', '.join(n['flags'])}]"
             print(line)
         if not news.get(sec["id"]):
             print("(nothing new)")
     print("\n[history]")
     for h in history:
-        print(f"{h['id']} | {h['year']} | {h['text']}")
+        print(f"{h['id']} | {h['year']} | {h['text']}"
+              + (" [check the numbers on the linked page]" if h.get("check_numbers") else ""))
     print(f"\n[did_you_know] today's theme: {out['did_you_know_theme']}")
     if out["did_you_know_used"]:
         print("[did_you_know already used] " + " / ".join(out["did_you_know_used"][:15]))

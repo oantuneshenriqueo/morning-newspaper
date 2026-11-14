@@ -25,6 +25,7 @@ Rules:
 - Keys under `sections` are the section `id`s from config.json. Missing or empty = the section is not printed.
 - `ref` is a collected ID (`a1`, `b3`, `h2`…). URL, outlet and date are filled in automatically. For a story found outside the collection (fallback search), replace `ref` with `"url": "https://..."` and `"outlet": "Name"`.
 - The headline's section label is taken from its `ref`; set `"section"` only to override it.
+- Headline researched in another page: keep its `ref` (the repeat checks need it) and add `"url"` and `"outlet"` of the page whose facts you used. They replace the collected link and outlet in the printed source.
 - `icon` (headline illustration): `lock`, `chip`, `coin`, `chart`, `gamepad`, `city`, `robot` or `newspaper`.
 - `weather`: omit to use the collected forecast; `false` removes the box; or an object `{"max": 27, "min": 17, "condition": "...", "icon": "cloud", "url": "https://..."}` from a fallback search (icons: `sun`, `sun-cloud`, `cloud`, `rain`, `storm`). If the collected condition is in another language, set `weather_condition`.
 - Classifieds: `tag` is optional (defaults to the "reply wanted" label; use the `resolved` label for resolved ones). Links only to `https://mail.google.com/`; no amounts, codes or long numbers (the script refuses them).

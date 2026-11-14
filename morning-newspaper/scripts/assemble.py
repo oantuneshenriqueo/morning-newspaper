@@ -10,12 +10,15 @@ Output, if every check passes:
   WORK/archive/editions/index.json     (previous index + the new entry on top)
   WORK/archive/index.html              (when the newsstand is new or legacy, or with --with-page)
   WORK/archive/config.json             (when the newsstand is new or legacy, or with --with-config)
-and the list of files to publish. If anything fails it prints the errors, writes nothing and exits 1.
+and the list of files to publish. With --standalone (a test or a copy that is not going to the
+newsstand) or --share (a copy to show other people) it writes only WORK/standalone/YYYY-MM-DD.html:
+no newsstand button, and the index is left untouched.
+If anything fails it prints the errors, writes nothing and exits 1.
 
 Standard library only. No network access.
 Usage:
   python3 assemble.py --skill SKILL_DIR --config config.json --work WORK_DIR [--index index.json]
-                      [--with-config] [--with-page] [--sample]
+                      [--with-config] [--with-page] [--sample] [--standalone | --share]
 """
 import argparse
 import datetime as dt
@@ -198,7 +201,12 @@ def main():
     ap.add_argument("--with-page", action="store_true", help="also write index.html (the newsstand page) into the output to publish")
     ap.add_argument("--sample", action="store_true",
                     help="sample edition for a reader with no setup yet: adds the setup notice and never publishes config.json")
+    ap.add_argument("--standalone", action="store_true",
+                    help="a single page that is not added to the newsstand (test or 'don't publish')")
+    ap.add_argument("--share", action="store_true",
+                    help="like --standalone, for showing other people: says on the page what was left out")
     a = ap.parse_args()
+    standalone = a.standalone or a.share
 
     errors, warnings = [], []
     with open(a.config, encoding="utf-8") as f:
@@ -340,20 +348,36 @@ def main():
         return f"{n} {L[one] if n == 1 else L[many]}"
 
     sample = a.sample or bool(ed.get("sample"))
+    now = dt.datetime.now(tz)
+    # An edition printed in the afternoon (an interactive run or a reissue) is not a morning one.
+    evening = not weekend and day == now.date() and now.hour >= 12
+    kind = L["edition_sample"] if sample else (L["edition_weekend"] if weekend else
+                                               L["edition_evening"] if evening else L["edition_morning"])
     band = ed.get("band") or " · ".join(filter(None, [
-        L["edition_sample"] if sample else (L["edition_weekend"] if weekend else L["edition_morning"]),
+        kind, L["shared_band"] if a.share else "",
         (plural(len(agenda), "appointment", "appointments") if agenda else L["free_agenda"]) if has_agenda else "",
         plural(len(classifieds), "classified", "classifieds") if classifieds else "",
         f"{total} {L['news_items']}"]))
     summary_line = band.split(" · ", 1)[1] if " · " in band else band
+    shared_note = ""
+    if a.share and not (has_agenda or has_mail):
+        shared_note = L["shared_note_both"]
+    elif a.share and not has_agenda:
+        shared_note = L["shared_note_agenda"]
+    elif a.share and not has_mail:
+        shared_note = L["shared_note_mail"]
 
     def fmt_date(fmt):
         return fmt.format(weekday=L["weekdays"][day.weekday()], day=day.day,
                           month=L["months_short"][day.month - 1], year=day.year)
 
-    now = dt.datetime.now(tz)
     text_h = (h.get("text") or "").strip()
     news_name = (cfg.get("newspaper") or {}).get("name") or L["default_newspaper_name"]
+    # Who wrote it: "Claude" by default; newspaper.editor names another assistant, "" leaves it out.
+    editor = (cfg.get("newspaper") or {}).get("editor", L["default_editor"])
+    printed = L["time_format"].format(h=f"{now.hour:02d}", m=f"{now.minute:02d}")
+    footer = (L["footer_credits"].format(editor=editor, time=printed) if editor
+              else L["footer_printed"].format(time=printed))
     ctx = {
         "HTML_LANG": L["html_lang"], "NEWSPAPER": news_name, "MOTTO": (cfg.get("newspaper") or {}).get("motto", ""),
         "YEAR_ROMAN": roman(year_n), "NUMBER_3": f"{number:03d}", "DATE_LONG": fmt_date(L["date_format"]),
@@ -377,8 +401,8 @@ def main():
         "url_history": str(hist.get("url", "")).startswith("https://"), "URL_HISTORY": hist.get("url", ""),
         "didyouknow": bool(dyk.get("text")), "DIDYOUKNOW": dyk.get("text", ""),
         "url_didyouknow": str(dyk.get("url", "")).startswith("https://"), "URL_DIDYOUKNOW": dyk.get("url", ""),
-        "FOOTER_CREDITS": L["footer_credits"].format(
-            time=L["time_format"].format(h=f"{now.hour:02d}", m=f"{now.minute:02d}")),
+        "FOOTER_CREDITS": footer,
+        "shared_note": bool(shared_note), "SHARED_NOTE": shared_note, "newsstand_button": not standalone,
     }
     for k, v in L.items():
         if isinstance(v, str):
@@ -395,7 +419,7 @@ def main():
     if re.search(r"\{\{|<!--/?(IF|EACH):", body):
         errors.append("a template marker was left in the page")
     for href in re.findall(r'href="([^"]*)"', page):
-        if not (href.startswith("https://") or href == "../index.html"):
+        if not (href.startswith("https://") or (href == "../index.html" and not standalone)):
             errors.append(f"invalid link in page: {href[:60]}")
     for tag in ("section", "div", "article", "p"):
         if len(re.findall(rf"<{tag}[\s>]", page)) != page.count(f"</{tag}>"):
@@ -408,6 +432,20 @@ def main():
             print("ERROR:", e)
         print("Nothing was written. Fix edition.json and run again.")
         return 1
+
+    if standalone:
+        # Nothing goes to the newsstand: no index is written, so a copy can never replace the
+        # morning entry by mistake if someone publishes WORK/archive later.
+        out_dir = os.path.join(a.work, "standalone")
+        os.makedirs(out_dir, exist_ok=True)
+        path = os.path.join(out_dir, f"{day.isoformat()}.html")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(page)
+        print(f"OK: {L['issue_label']} {number:03d} · {day.isoformat()} · {total} stories · "
+              f"{'SHARE COPY' if a.share else 'STANDALONE'}")
+        print("HEADLINE:", h.get("title", ""))
+        print(f"NOT FOR THE NEWSSTAND: send this file to the reader: {os.path.abspath(path)}")
+        return 0
 
     stories = ([h] if h else []) + [n for v in sections.values() for n in v]
     entry = {
@@ -431,6 +469,7 @@ def main():
         for k in ("titles", "source_titles", "links"):
             e.pop(k, None)
 
+    stand_title = f"{news_name} · {L['archive_title']}"
     dest = os.path.join(a.work, "archive")
     os.makedirs(os.path.join(dest, "editions"), exist_ok=True)
     with open(os.path.join(dest, "editions", f"{day.isoformat()}.html"), "w", encoding="utf-8") as f:
@@ -439,10 +478,16 @@ def main():
         json.dump(new, f, ensure_ascii=False, indent=1)
     publish = [f"editions/{day.isoformat()}.html", "editions/index.json"]
     if index is None or legacy or a.with_page:
-        shutil.copy(os.path.join(a.skill, "assets", "archive.html"), os.path.join(dest, "index.html"))
+        with open(os.path.join(a.skill, "assets", "archive.html"), encoding="utf-8") as f:
+            stand = f.read()
+        # The page title is what the artifact list shows: "<newspaper> · <newsstand label>".
+        stand = re.sub(r"<title>.*?</title>", f"<title>{esc(stand_title)}</title>", stand, count=1)
+        stand = re.sub(r'<html lang="[^"]*">', f'<html lang="{esc(L["html_lang"])}">', stand, count=1)
+        with open(os.path.join(dest, "index.html"), "w", encoding="utf-8") as f:
+            f.write(stand)
         publish.insert(0, "index.html")
     if index is None:
-        print("NEW NEWSSTAND: create the artifact with the files below.")
+        print(f"NEW NEWSSTAND: create the artifact titled \"{stand_title}\" with the files below.")
     elif legacy:
         print("LEGACY NEWSSTAND MIGRATED: the index now lives in editions/index.json. Publish every file below "
               "and, if the tool can delete files, remove edicoes/indice.json in the same call.")
@@ -452,6 +497,7 @@ def main():
     print(f"OK: {L['issue_label']} {number:03d} · {day.isoformat()} · {total} stories"
           f"{' · REISSUE' if existing else ''}")
     print("HEADLINE:", h.get("title", ""))
+    print(f"NEWSSTAND TITLE: {stand_title}")
     print("PUBLISH (as -> path):")
     for p in publish:
         print(f"  {p} -> {os.path.abspath(os.path.join(dest, p))}")

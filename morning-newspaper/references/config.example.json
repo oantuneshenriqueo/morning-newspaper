@@ -27,7 +27,7 @@
       "layout": "main",
       "interest": "Programming, new AI models and developer tools, serious security flaws, data breaches and online scams.",
       "count": { "weekday": [2, 3], "weekend": [1, 2] },
-      "queries": ["security vulnerability", "data breach", "new AI model", "developer tools release"],
+      "queries": ["software security vulnerability", "data breach hackers", "new AI model", "developer tools release"],
       "feeds": []
     },
     {

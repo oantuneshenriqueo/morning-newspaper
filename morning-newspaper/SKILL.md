@@ -35,11 +35,25 @@ Gathering news, weather and "On this day", building the HTML, updating the newss
 | `references/config.example.json` | Only during setup, as the model for config.json |
 | `references/style.md`, `assets/*` | Only when the request is to change the look |
 
+## What the skill needs, and what happens without it
+
+Check which tools this session has before step 1. Only the shell, web search and the file-writing tool are required; everything else degrades on its own:
+
+| Missing tool | What happens |
+| --- | --- |
+| Artifact tools (list, read, publish) | **Local newsstand** on disk (`references/archive.md`, "Without artifact tools"). Never publish anywhere public to make up for it. |
+| Google Calendar | No agenda box. One line at the end says which connection would add it. |
+| Gmail | No classifieds box. Same one line. |
+| Connector registry | Name the missing connection in that line; there is no button to show. |
+| Multiple-choice question tool | Setup asks in one numbered message (`references/setup.md`). |
+| Scheduled-task tool | No daily schedule: say so in one line if the reader asks for one, and that they can ask for the paper whenever they like. |
+| Playwright with Chromium | No screenshot check. Install nothing. |
+
 ## Scheduling
 
 When the reader asks for a daily schedule, or chose a delivery time during setup (`references/setup.md`). Never create one they did not ask for:
 - **No config yet?** Do not create the task first. Run `references/setup.md` (the quick start is fine), publish edition No. 001 so the reader sees what they will get, and only then create the schedule. A schedule created before setup would wake up to a sample edition instead of their paper.
-- Use the session's scheduled-task tool. Run a few minutes before the time they want the paper ready, in their timezone (`CRON_TZ=<config.timezone> 43 6 * * *` for a 7:00 paper).
+- Use the session's scheduled-task tool (if there is none, see the table above). Run a few minutes before the time they want the paper ready, in their timezone (`CRON_TZ=<config.timezone> 43 6 * * *` for a 7:00 paper).
 - The task prompt must be self-contained, written in the reader's language, and include the newsstand slug, e.g.: "Run the morning-newspaper skill and publish today's edition to the newsstand (slug: SLUG). Scheduled run: ask nothing, decide and go on."
 - After creating it, say in one sentence which approval mode it got. If runs will ask for approval, explain that nobody is there at dawn to approve, so the edition would stall, and point to `references/permissions.md`.
 - Never create, change or delete scheduled tasks during a scheduled run.
@@ -50,9 +64,18 @@ Say in one line that the edition takes a few minutes. In a scheduled run nobody 
 
 Working folder: `~/newspaper/YYYY-MM-DD/`, dated in the reader's timezone (WORK below). Skill folder: SKILL.
 
+### Test or copy to share (not added to the newsstand)
+
+When the reader asks for a test, says "don't publish" or "don't add it to the newsstand", or wants a copy to show other people:
+- **To show other people** (colleagues, friends, a post): the agenda and the emails are personal, so the reader decides. In an interactive session ask one short question before collecting, with "Leave them out (Recommended)" first and "Include them" second. No answer, or a scheduled run: leave them out. Never decide it silently in either direction.
+- Still find the newsstand (step 1) and read its config and index, **read-only**, so the issue number and the repeat checks are right. Publish nothing and create nothing.
+- In step 5 add `--share` (copy to show) or `--standalone` (test for the reader). The page has no newsstand button, says at the top what was left out (`--share`), and no index is written.
+- Step 6 is skipped; in step 8 send the file the script printed.
+
 ### 1. Find the newsstand and the config
 
 Follow `references/archive.md` ("Finding the newsstand"). From it, save `config.json` to `WORK/config.json` and `editions/index.json` to `WORK/index.json`.
+- **No artifact tools in this session:** use the local newsstand (`references/archive.md`, "Without artifact tools").
 - **No newsstand or no `config.json`:**
   - Interactive session → run `references/setup.md`, then continue.
   - Scheduled run with a config in the task prompt → use it, and add `--with-config` in step 5 so the newsstand gets its `config.json` (see `references/archive.md`).
@@ -72,14 +95,18 @@ In the same block of calls:
 - Skip any story whose link is in `links`, or whose title tells the same story as a `headline`, `titles` or `source_titles` entry, in the last 14 editions of `WORK/index.json`: the script could not check repeats this time.
 - Weather: one search, as in the fallback above. "On this day": the search described in `references/extras.md`.
 
-**Extra research only for the headline:** one web search with the headline's title (collected links are Google News redirects that page fetchers cannot open). Never research secondary stories: their 1–2 sentences come from title and summary.
+**Extra research for the headline:** one web search with the headline's title plus the current month and year (collected links are Google News redirects that page fetchers cannot open). If every result is older than the date window, search once more in the more thorough search mode, when the tool has one. Keep the headline's `ref` and add the `url` and `outlet` of the page whose facts you used, so the printed source is the one behind the numbers (`references/edition-format.md`).
+
+**Secondary stories are not researched:** their 1–2 sentences come from title and summary. One exception: when the title does not name what it is about ("a free city-builder on Steam", "a farming sim announced"), one search only to find that name, at most twice per edition. Not found: leave the story out.
 
 Missing tool or connector: leave its key out of `edition.json` so the box disappears (never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read). In an interactive session, say in one line at the end which connection would help.
 
 ### 3. Select
 
 Use each section's `interest` and `count` from the config:
-- One story per fact (the script already groups near-identical titles; double-check). Prefer the original or most reliable source.
+- One story per fact. The script drops near-identical titles and marks the rest that may tell the same fact as an earlier one with `≈a1` (in any section): keep one of each group, from the original or most reliable source.
+- `old month?`: the title names another month ("inflation closes June" in November). It is probably old or republished news: leave it out unless the text is clearly about something new.
+- `city`: the title names the reader's city. In the local section prefer these over stories from neighbouring towns.
 - Drop gossip, sponsored content, small-company press releases and news from other regions that does not affect the reader.
 - Headline: the story most relevant to the reader today (affects what they do, use or decide).
 - A section with nothing good is left out. Never pad with weak or invented stories.
@@ -97,21 +124,25 @@ Read `references/writing.md` and `references/edition-format.md`. Write `WORK/edi
 - `WARNING:` → consider it; it does not block.
 - `OK:` → prints the files to publish (`as` -> path).
 
-Visual check only in an interactive session and only if Playwright with Chromium is already installed: a screenshot at 390 px. Install nothing.
+Visual check only in an interactive session and only if Playwright with Chromium is already installed: a screenshot at 390 px. Install nothing, and do not fall back to another browser (a system browser can hang the session).
 
 ### 6. Publish to the newsstand
 
-Follow `references/archive.md` ("Adding today's edition"). Publish exactly the files `assemble.py` listed, from disk, in patch mode. If the user asked for a test or "don't publish", skip this step and send the edition HTML as a file instead.
+Follow `references/archive.md` ("Adding today's edition", or "Without artifact tools" for a local newsstand). Publish exactly the files `assemble.py` listed, from disk, in patch mode. Test or copy to share: skip this step (see above).
 
 ### 7. Final check (what the script cannot see)
 
 - The agenda matches the calendar (times in the reader's timezone).
 - No email the reader already answered appears as pending.
-- The texts say what the sources say: nothing invented, no number without a source, everything paraphrased.
+- **Sentence by sentence**, compare every written sentence (titles, deck, texts, both extras) with what backs it: the collected title and summary, the headline's search, the Wikipedia text or the "Did you know?" page. Remove any name, nationality, number, date, comparison ("faster than the previous ones"), adjective ("initial problems") or consequence ("proof that…") that is not there. A deck tells a consequence the sources state, never advice or an order to the reader ("should watch out for scams").
+- One item, one `ref`: never mix facts from two collected stories into one text.
+- Everything paraphrased.
 
 ### 8. Deliver
 
 - First run (just after setup): the summary described at the end of `references/setup.md`.
+- Test or copy to share: send the HTML file the script printed, with one sentence on what was left out.
+- Local newsstand: one sentence with the headline and the folder where the newsstand lives.
 - Any other interactive run: one sentence with today's headline, in the reader's language (the artifact card already shows the link). If no scheduled task runs this newspaper (check when the scheduled-task tools can list them), add one short line saying they can ask at any time to get it every morning ("schedule my newspaper").
 - Scheduled run: just publish; send no messages.
 

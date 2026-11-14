@@ -39,6 +39,7 @@
  "year_label": "Year",
  "issue_label": "No.",
  "edition_morning": "Morning edition",
+ "edition_evening": "Evening edition",
  "edition_weekend": "Weekend edition",
  "appointment": "appointment",
  "appointments": "appointments",
@@ -64,7 +65,9 @@
  "didyouknow_title": "Did you know?",
  "week_in_a_cup": "The week in a cup",
  "footer_title": "Masthead",
- "footer_credits": "Reporting, editing and layout: Claude · Printed at {time}",
+ "footer_credits": "Reporting, editing and layout: {editor} · Printed at {time}",
+ "footer_printed": "Printed at {time}",
+ "default_editor": "Claude",
  "archive_button": "See past editions at the newsstand",
  "archive_title": "Newsstand",
  "archive_kicker": "Newspaper stand",
@@ -79,5 +82,9 @@
  "sample_section": "Sample edition",
  "sample_title": "This newspaper has not been set up yet",
  "sample_text": "That is why this edition uses the default sections and has no weather or local news. To personalize it, tell Claude {command} and answer a few questions about your name, your city and the topics you want to follow. The setup is saved in your private newsstand.",
- "sample_command": "set up my newspaper"
+ "sample_command": "set up my newspaper",
+ "shared_band": "Copy to share",
+ "shared_note_both": "Copy to share: the reader's agenda and emails are left out.",
+ "shared_note_agenda": "Copy to share: the reader's agenda is left out.",
+ "shared_note_mail": "Copy to share: the reader's emails are left out."
 }

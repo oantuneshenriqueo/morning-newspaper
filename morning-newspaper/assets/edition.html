@@ -21,6 +21,7 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 .lema{font-style:italic;font-size:15px;margin-top:4px}
 .fio-duplo{border-top:4px double var(--tinta);border-bottom:1px solid var(--tinta);margin-top:6px}
 .faixa{background:var(--verm);color:var(--claro);text-align:center;font-size:13px;padding:6px 4px;margin-top:3px}
+.aviso-copia{text-align:center;font-style:italic;font-size:13px;padding:6px 4px;border-bottom:1px solid var(--tinta)}
 .quadro{border:1.5px solid var(--tinta);background:var(--claro)}
 .tempo{display:flex;gap:12px;align-items:center;margin-top:14px;padding:10px 12px}
 .tempo .rot{font-size:12px;color:var(--azul)}
@@ -85,6 +86,7 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 </header>
 <div class="fio-duplo"></div>
 <div class="faixa sc">{{BAND}}</div>
+<!--IF:shared_note--><div class="aviso-copia">{{SHARED_NOTE}}</div><!--/IF:shared_note-->
 
 <!--IF:sample-->
 <section class="editorial"><div class="secao-titulo sc">{{L_sample_section}}</div>
@@ -172,7 +174,7 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <footer class="expediente">
 <div class="sc">{{L_footer_title}}</div>
 <div><i>{{FOOTER_CREDITS}}</i></div>
-<a class="botao sc" href="../index.html">{{L_archive_button}}</a>
+<!--IF:newsstand_button--><a class="botao sc" href="../index.html">{{L_archive_button}}</a><!--/IF:newsstand_button-->
 </footer>
 
 </main>

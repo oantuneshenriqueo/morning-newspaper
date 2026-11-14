@@ -39,6 +39,7 @@
  "year_label": "Ano",
  "issue_label": "Nº",
  "edition_morning": "Edição matutina",
+ "edition_evening": "Edição vespertina",
  "edition_weekend": "Edição de fim de semana",
  "appointment": "compromisso",
  "appointments": "compromissos",
@@ -64,7 +65,9 @@
  "didyouknow_title": "Você sabia?",
  "week_in_a_cup": "A semana em uma xícara",
  "footer_title": "Expediente",
- "footer_credits": "Redação, revisão e diagramação: Claude · Impresso às {time}",
+ "footer_credits": "Redação, revisão e diagramação: {editor} · Impresso às {time}",
+ "footer_printed": "Impresso às {time}",
+ "default_editor": "Claude",
  "archive_button": "Ver edições anteriores na banca",
  "archive_title": "Banca",
  "archive_kicker": "Banca de jornais",
@@ -79,5 +82,9 @@
  "sample_section": "Edição de amostra",
  "sample_title": "Este jornal ainda não foi configurado",
  "sample_text": "Por isso, esta edição usa as seções padrão e não traz o clima nem as notícias da sua cidade. Para personalizar, diga ao Claude {command} e responda algumas perguntas sobre seu nome, sua cidade e os assuntos que quer acompanhar. A configuração fica guardada na sua banca privada.",
- "sample_command": "configurar meu jornal"
+ "sample_command": "configurar meu jornal",
+ "shared_band": "Cópia para compartilhar",
+ "shared_note_both": "Cópia para compartilhar: a agenda e os e-mails do leitor ficam de fora.",
+ "shared_note_agenda": "Cópia para compartilhar: a agenda do leitor fica de fora.",
+ "shared_note_mail": "Cópia para compartilhar: os e-mails do leitor ficam de fora."
 }

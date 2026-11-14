@@ -1,4 +1,5 @@
 """scripts/assemble.py: builds the edition HTML and the newsstand index from edition.json."""
+import html
 import re
 
 import pytest
@@ -292,3 +293,74 @@ def test_template_markers_in_text_stay_literal(assembler):
     assembler.edition["agenda"][0]["event"] = "Write about {{MOTTO}}"
     ok(assembler.run())
     assert "Write about {{MOTTO}}" in assembler.page()
+
+
+# ---------------------------------------------------------------- copies outside the newsstand (v1.3)
+
+def standalone_page(assembler, date="2026-11-13"):
+    return (assembler.tmp / "work" / "standalone" / f"{date}.html").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("flag", ["--standalone", "--share"])
+def test_copy_outside_the_newsstand(assembler, flag):
+    old = {"founded": "2026-11-10", "editions": [{"date": "2026-11-13", "number": 4, "headline": "Morning"}]}
+    proc = ok(assembler.run(flag, index=old))
+    assert "NOT FOR THE NEWSSTAND" in proc.stdout and "PUBLISH" not in proc.stdout
+    assert not proc.archive.exists()          # no index that could replace the morning entry
+    page = standalone_page(assembler)
+    assert "../index.html" not in page        # no button to a newsstand that is not there
+    assert "No. 004" in page or "004" in page  # the reissue keeps the number
+
+
+def test_share_copy_says_what_was_left_out(assembler):
+    del assembler.edition["agenda"]
+    del assembler.edition["classifieds"]
+    ok(assembler.run("--share"))
+    page = standalone_page(assembler)
+    assert html.escape("Copy to share: the reader's agenda and emails are left out.") in page
+    assert "Copy to share" in re.search(r'class="faixa sc">(.*?)<', page).group(1)
+
+
+def test_share_copy_with_the_agenda_only_mentions_the_emails(assembler):
+    del assembler.edition["classifieds"]
+    ok(assembler.run("--share"))
+    assert html.escape("Copy to share: the reader's emails are left out.") in standalone_page(assembler)
+
+
+def test_normal_edition_has_no_share_note(assembler):
+    ok(assembler.run())
+    page = assembler.page()
+    assert "aviso-copia\">" not in page and "../index.html" in page
+
+
+# ---------------------------------------------------------------- footer, title, headline source
+
+def test_footer_editor(assembler):
+    ok(assembler.run())
+    assert "Reporting, editing and layout: Claude" in assembler.page()
+    assembler.config["newspaper"]["editor"] = "Another Assistant"
+    ok(assembler.run())
+    assert "layout: Another Assistant" in assembler.page()
+    assembler.config["newspaper"]["editor"] = ""
+    ok(assembler.run())
+    assert "Reporting, editing" not in assembler.page() and "Printed at" in assembler.page()
+
+
+def test_newsstand_page_title_names_the_newspaper(assembler):
+    assembler.config["language"] = "pt-BR"
+    assembler.config["newspaper"].pop("name")
+    proc = ok(assembler.run())
+    stand = (proc.archive / "index.html").read_text(encoding="utf-8")
+    assert "<title>O Jornal Matinal · Banca</title>" in stand
+    assert '<html lang="pt-BR">' in stand
+    assert "NEWSSTAND TITLE: O Jornal Matinal · Banca" in proc.stdout
+
+
+def test_headline_keeps_its_ref_with_the_researched_source(assembler, collected):
+    assembler.edition["headline"].update(url="https://blog.example/original", outlet="Original Blog")
+    ok(assembler.run())
+    page = assembler.page()
+    assert 'href="https://blog.example/original"' in page and "Original Blog" in page
+    entry = assembler.new_index()["editions"][0]
+    first = next(n for lst in collected["news"].values() for n in lst if n["id"] == "a1")
+    assert first["title"] in entry["source_titles"]  # the repeat check still knows the story

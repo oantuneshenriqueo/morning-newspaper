@@ -4,12 +4,12 @@ Write everything in the reader's language (`config.language`). The paper sounds 
 
 ## Headline
 - Up to 14 words, present tense, main fact first.
-- Deck (subtitle, in italics): one sentence with the consequence for the reader.
+- Deck (subtitle, in italics): one sentence with a consequence the sources state. Never advice or an order ("readers should watch out for scams").
 - Text: 3 to 4 sentences. The first answers what, who and when. The last says what the reader can do or what comes next, when there is something.
 
 ## Section stories
 - Title up to 12 words.
-- Text: 1 to 2 sentences.
+- Text: 1 to 2 sentences. With an empty summary there is only the title: say its fact in other words and add nothing (no "initial" problems when the title says problems).
 - The source link ("Source: outlet") is added by the script.
 
 ## Copyright (mandatory)
@@ -30,7 +30,7 @@ Write everything in the reader's language (`config.language`). The paper sounds 
 
 ## Never
 - Invent a story, number, date, source or quote.
-- Add facts from memory: every name, number and detail must come from the collected title/summary or from a search made in this run. If it is not there, leave it out.
+- Add facts from memory: every name, number and detail must come from the collected title/summary or from a search made in this run. If it is not there, leave it out. The usual slips: a nationality, a comparison ("faster than before"), an adjective ("initial", "historic") and a conclusion ("proof that…").
 - Give investment advice.
 - Order the reader around ("you must…"), preach, or apologize ("I couldn't find much"). A slow day is a slow day.
 - Narrate the process ("I searched several sources…").

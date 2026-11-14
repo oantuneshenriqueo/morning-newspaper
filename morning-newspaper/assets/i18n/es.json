@@ -39,6 +39,7 @@
  "year_label": "Año",
  "issue_label": "N.º",
  "edition_morning": "Edición matutina",
+ "edition_evening": "Edición vespertina",
  "edition_weekend": "Edición de fin de semana",
  "appointment": "compromiso",
  "appointments": "compromisos",
@@ -64,7 +65,9 @@
  "didyouknow_title": "¿Sabías que…?",
  "week_in_a_cup": "La semana en una taza",
  "footer_title": "Créditos",
- "footer_credits": "Redacción, edición y diseño: Claude · Impreso a las {time}",
+ "footer_credits": "Redacción, edición y diseño: {editor} · Impreso a las {time}",
+ "footer_printed": "Impreso a las {time}",
+ "default_editor": "Claude",
  "archive_button": "Ver ediciones anteriores en el quiosco",
  "archive_title": "Quiosco",
  "archive_kicker": "Quiosco de prensa",
@@ -79,5 +82,9 @@
  "sample_section": "Edición de muestra",
  "sample_title": "Este periódico todavía no está configurado",
  "sample_text": "Por eso, esta edición usa las secciones predeterminadas y no trae el tiempo ni las noticias de tu ciudad. Para personalizarla, dile a Claude {command} y responde unas preguntas sobre tu nombre, tu ciudad y los temas que quieres seguir. La configuración se guarda en tu quiosco privado.",
- "sample_command": "configurar mi periódico"
+ "sample_command": "configurar mi periódico",
+ "shared_band": "Copia para compartir",
+ "shared_note_both": "Copia para compartir: la agenda y los correos del lector quedan fuera.",
+ "shared_note_agenda": "Copia para compartir: la agenda del lector queda fuera.",
+ "shared_note_mail": "Copia para compartir: los correos del lector quedan fuera."
 }
