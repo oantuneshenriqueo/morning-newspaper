@@ -60,6 +60,7 @@
  "all_day": "Todo el día",
  "classifieds_title": "Clasificados",
  "classifieds_empty": "Ningún clasificado hoy. Bandeja de entrada al día.",
+ "security_alert": "Hay alertas de seguridad en tu bandeja de entrada (un nuevo inicio de sesión o un cambio de contraseña): revísalas en Gmail.",
  "mail_not_connected": "Gmail no está conectado. Conéctalo para ver aquí los correos que esperan tu respuesta.",
  "mail_failed": "No se pudo consultar Gmail: {reason}.",
  "connector_failed": "el conector falló",

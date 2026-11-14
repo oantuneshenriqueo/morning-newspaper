@@ -62,9 +62,9 @@ When the reader asks for a daily schedule, or chose a delivery time during setup
 
 Say in one line that the edition takes a few minutes. In a scheduled run nobody is watching: ask nothing, decide and go on.
 
-Working folder: `~/newspaper/YYYY-MM-DD/`, dated in the reader's timezone (WORK below). Skill folder: SKILL.
+Working folder: `newspaper/YYYY-MM-DD/` inside the session's current working folder (`pwd`), dated in the reader's timezone (WORK below). Skill folder: SKILL. Never a folder elsewhere such as `~/newspaper/`: the publishing tool only takes files from the working folder or the session's temporary folder.
 
-If `~/newspaper/` cannot be created (read-only home folder), use a new temporary folder (`mktemp -d`) or the current working folder as WORK. If no folder can be written at all, there can be no edition: tell the reader in one sentence that the newspaper could not be printed because this session cannot save files, and stop.
+If that folder cannot be created (read-only), use the session's temporary folder (`mktemp -d`) as WORK. If no folder can be written at all, there can be no edition: tell the reader in one sentence that the newspaper could not be printed because this session cannot save files, and stop.
 
 ### Only the newspaper (no newsstand)
 
@@ -93,7 +93,7 @@ Follow `references/archive.md` ("Finding the newsstand"). From it, save `config.
 In the same block of calls:
 - **Script:** `python3 SKILL/scripts/collect.py --config WORK/config.json --work WORK --index WORK/index.json` (omit `--index` if there is none). It prints the date, issue number, weather, candidate stories per section with short IDs (`a1`, `b2`…), "On this day" candidates (`h1`…) and a `FAILURES` line if a source did not answer. It already applies the date window (48 h; 72 h on Mondays and weekends), drops stories used in the last 14 editions and anything matching the reader's `avoid` list, and takes turns between a section's searches so the candidates cover all of them.
 - **Agenda (Google Calendar):** one listing from today 00:00 to tomorrow 23:59, primary calendar only. Tomorrow's events only feed an optional preparation note. A successful answer with no `items` field means no events; a failed call is not a free day (see below).
-- **Email (Gmail):** one search: `in:inbox newer_than:2d -category:promotions -category:social -category:updates -category:forums -from:me` (`newer_than:3d` on Saturdays, Sundays and Mondays, like the news window). Open (once each) only conversations that seem to ask the reader for something; if the reader already replied, it becomes "resolved" or is dropped. Automatic notifications are never classifieds; a security alert (new sign-in, password change) is mentioned to the reader in the interactive reply, never in the paper.
+- **Email (Gmail):** one search: `in:inbox newer_than:2d -category:promotions -category:social -category:updates -category:forums -from:me` (`newer_than:3d` on Saturdays, Sundays and Mondays, like the news window). Open (once each) only conversations that seem to ask the reader for something; if the reader already replied, it becomes "resolved" or is dropped. Automatic notifications are never classifieds. A security alert (new sign-in, password change) is mentioned to the reader in the interactive reply; in a scheduled run, where no message is sent, set `"security_alert": true` instead, which prints one neutral line in the classifieds box (never which account or what happened).
 
 **Fallback, only when something is missing:** if a section failed in the script (`FAILURES`) and came back empty, do one web search for it with the current month and year. Weather unavailable: one search for today's forecast in the reader's city; without a reliable result, `"weather": false`.
 
@@ -115,6 +115,7 @@ Connected, but the call fails: try once more. Still failing, set `agenda_error` 
 Use each section's `interest` and `count` from the config:
 - One story per fact. The script drops near-identical titles and marks the rest that may tell the same fact as an earlier one with `≈a1` (in any section): keep one of each group, from the original or most reliable source.
 - `old month?`: the title names another month ("inflation closes June" in November). It is probably old or republished news: leave it out unless the text is clearly about something new.
+- `recurring?`: a scheduled decision or figure (rate decision, inflation, jobs, GDP). Outlets republish these for days and the date shown is the republication's. Before using one, confirm with one web search (current month and year) that the decision or figure itself is inside the date window; if it is older, leave it out. For the headline, its extra research already does this. At most two such searches per edition: past that, leave the rest out.
 - `city`: the title names the reader's city. In the local section prefer these over stories from neighbouring towns.
 - Drop gossip, sponsored content, small-company press releases and news from other regions that does not affect the reader.
 - Headline: the story most relevant to the reader today (affects what they do, use or decide).

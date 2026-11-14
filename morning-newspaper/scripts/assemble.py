@@ -8,7 +8,7 @@ Inputs: WORK/edition.json (format in references/edition-format.md), WORK/collect
 Output, if every check passes:
   WORK/archive/editions/YYYY-MM-DD.html
   WORK/archive/editions/index.json     (previous index + the new entry on top)
-  WORK/archive/index.html              (when the newsstand is new or legacy, or with --with-page)
+  WORK/archive/index.html              (always: the publishing tool needs the page in every publish)
   WORK/archive/config.json             (when the newsstand is new or legacy, or with --with-config)
 and the list of files to publish. With --standalone (a test or a copy that is not going to the
 newsstand) or --share (a copy to show other people) it writes only WORK/standalone/YYYY-MM-DD.html:
@@ -60,7 +60,8 @@ LEGACY_INDEX_KEYS = ("edicoes", "fundado_em", "jornal")
 LEGACY_KEYS = {"data": "date", "numero": "number", "dia_semana": "weekday", "tipo": "type", "manchete": "headline",
                "resumo": "summary", "arquivo": "file", "titulos": "titles"}
 LEGACY_EXTRAS = {"historia": "history", "voce_sabia": "did_you_know"}
-LEGACY_TYPES = {"fim de semana": "weekend", "manhã": "morning", "manha": "morning", "amostra": "sample"}
+LEGACY_TYPES = {"fim de semana": "weekend", "manhã": "morning", "manha": "morning", "matutina": "morning",
+                "amostra": "sample"}
 DEDUP_EDITIONS = 14  # titles/links only exist to avoid repeats: kept for the latest editions only
 
 
@@ -206,7 +207,7 @@ def main():
     ap.add_argument("--work", required=True)
     ap.add_argument("--index", help="current index.json of the newsstand; omit if it does not exist yet")
     ap.add_argument("--with-config", action="store_true", help="also write config.json into the output to publish")
-    ap.add_argument("--with-page", action="store_true", help="also write index.html (the newsstand page) into the output to publish")
+    ap.add_argument("--with-page", action="store_true", help="kept for older instructions: index.html is now always written")
     ap.add_argument("--sample", action="store_true",
                     help="sample edition for a reader with no setup yet: adds the setup notice and never publishes config.json")
     ap.add_argument("--standalone", action="store_true",
@@ -310,9 +311,12 @@ def main():
     limits = cfg.get("total_news") or {}
     if total > limits.get("max", 10):
         errors.append(f"{total} stories: the maximum is {limits.get('max', 10)}")
-    lo = (limits.get("weekend" if weekend else "weekday") or [0])[0]
-    if total < lo:
-        warnings.append(f"only {total} stories (usual minimum {lo}); fine if it is a slow day")
+    usual = limits.get("weekend" if weekend else "weekday") or [0]
+    if total < usual[0]:
+        warnings.append(f"only {total} stories (usual minimum {usual[0]}); fine if it is a slow day")
+    if len(usual) > 1 and total > usual[1]:
+        warnings.append(f"{total} stories: above the usual {usual[0]}-{usual[1]} for "
+                        f"{'a weekend' if weekend else 'a weekday'}; drop the weakest unless all are worth it")
 
     # A list means the connector was read (empty = free day / inbox up to date). A missing key means
     # it is not connected: the box stays, saying so, instead of claiming a free day or an empty inbox.
@@ -379,6 +383,7 @@ def main():
         plural(len(classifieds), "classified", "classifieds") if classifieds else "",
         f"{total} {L['news_items']}"]))
     summary_line = band.split(" · ", 1)[1] if " · " in band else band
+    summary_line = summary_line[:1].upper() + summary_line[1:]
     shared_note = ""
     if a.share and not (has_agenda or has_mail):
         shared_note = L["shared_note_both"]
@@ -418,9 +423,12 @@ def main():
         "agenda_failed": bool(agenda_failed), "AGENDA_FAILED": agenda_failed,
         "mail_failed": bool(mail_failed), "MAIL_FAILED": mail_failed,
         "prep": bool(ed.get("prep_note")), "PREP_NOTE": ed.get("prep_note", ""),
-        "classifieds_block": (has_mail and (bool(classifieds) or not weekend)) or bool(mail_failed)
-                             or (not has_mail and not a.share),
+        # The box is always there when Gmail was read, weekends too: empty = "inbox up to date".
+        "classifieds_block": has_mail or bool(mail_failed) or not a.share,
         "classifieds_empty": has_mail and not classifieds,
+        # A scheduled run sends no message, so a security alert would reach nobody: one neutral
+        # line in the box, never which account or what happened.
+        "security_alert": has_mail and bool(ed.get("security_alert")) and not a.share,
         "SECTIONS_HTML": sections_html(cfg, sections, L), "week": bool(week),
         "extras": bool(hist.get("text") or dyk.get("text")),
         "history": bool(hist.get("text")), "HISTORY": hist.get("text", ""),
@@ -503,15 +511,16 @@ def main():
     with open(os.path.join(dest, "editions", "index.json"), "w", encoding="utf-8") as f:
         json.dump(new, f, ensure_ascii=False, indent=1)
     publish = [f"editions/{day.isoformat()}.html", "editions/index.json"]
-    if index is None or legacy or a.with_page:
-        with open(os.path.join(a.skill, "assets", "archive.html"), encoding="utf-8") as f:
-            stand = f.read()
-        # The page title is what the artifact list shows: "<newspaper> · <newsstand label>".
-        stand = re.sub(r"<title>.*?</title>", f"<title>{esc(stand_title)}</title>", stand, count=1)
-        stand = re.sub(r'<html lang="[^"]*">', f'<html lang="{esc(L["html_lang"])}">', stand, count=1)
-        with open(os.path.join(dest, "index.html"), "w", encoding="utf-8") as f:
-            f.write(stand)
-        publish.insert(0, "index.html")
+    # The publishing tool needs the newsstand page in every publish, and the page's own <title>
+    # names the artifact: so index.html is always rebuilt from the template with the right title.
+    with open(os.path.join(a.skill, "assets", "archive.html"), encoding="utf-8") as f:
+        stand = f.read()
+    # The page title is what the artifact list shows: "<newspaper> · <newsstand label>".
+    stand = re.sub(r"<title>.*?</title>", f"<title>{esc(stand_title)}</title>", stand, count=1)
+    stand = re.sub(r'<html lang="[^"]*">', f'<html lang="{esc(L["html_lang"])}">', stand, count=1)
+    with open(os.path.join(dest, "index.html"), "w", encoding="utf-8") as f:
+        f.write(stand)
+    publish.insert(0, "index.html")
     if index is None:
         print(f"NEW NEWSSTAND: create the artifact titled \"{stand_title}\" with the files below.")
     elif legacy:
@@ -524,7 +533,7 @@ def main():
           f"{' · REISSUE' if existing else ''}")
     print("HEADLINE:", h.get("title", ""))
     print(f"NEWSSTAND TITLE: {stand_title}")
-    print("PUBLISH (as -> path):")
+    print("PUBLISH (as -> path; index.html is the newsstand's main page, never an edition):")
     for p in publish:
         print(f"  {p} -> {os.path.abspath(os.path.join(dest, p))}")
     return 0

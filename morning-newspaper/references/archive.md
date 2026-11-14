@@ -13,7 +13,9 @@ editions/YYYY-MM-DD.html one page per edition
 
 Use the session's artifact tools: list artifacts, get an artifact's state (version), list and read an artifact's files, and publish from files on disk (patch mode, which only changes the files you send).
 
-**Always list the newsstand's files in this session before publishing to it.** The publishing tool refuses to change an artifact whose file list it has not been shown in the same session, and the list is also how you learn whether `config.json`, `index.html` and `editions/index.json` exist.
+**Before publishing, in this session: list the newsstand's files and read the newsstand page itself** (the tool's action that returns the artifact's current page, e.g. reading the artifact). Some publishing tools refuse to change an artifact whose live page was not read in the same session; a file list alone does not count. The list is also how you learn whether `config.json`, `index.html` and `editions/index.json` exist.
+
+**`index.html` is always the newsstand's main page.** When the publishing tool asks for the page, entry file or `file_path`, give it `index.html` from `WORK/archive/`, never today's edition: an edition there would replace the newsstand's cover. Editions and the index are supporting files. Publish from `WORK/archive/`, which sits in the working folder (SKILL.md, "Edition flow"): the tool refuses files from other folders.
 
 ## Finding the newsstand
 1. If the request or the scheduled task prompt has the newsstand slug, use it.
@@ -26,7 +28,7 @@ Use the session's artifact tools: list artifacts, get an artifact's state (versi
 
 Then read `config.json` and `editions/index.json` from it into `WORK/config.json` and `WORK/index.json`.
 
-**Legacy newsstands.** A newsstand made by an early version keeps its index at `edicoes/indice.json`. If `editions/index.json` exists, it always wins: ignore the legacy file. If only the legacy file exists, save it as `WORK/index.json`: `assemble.py` recognizes it, rewrites every entry with the current keys, prints `LEGACY NEWSSTAND MIGRATED` and adds `index.html` and `config.json` to the files to publish. Publish them all and, if the publishing tool can delete files, remove `edicoes/indice.json` in the same call (past edition pages under `edicoes/` stay where they are).
+**Legacy newsstands.** A newsstand made by an early version keeps its index at `edicoes/indice.json`. If `editions/index.json` exists, it always wins: ignore the legacy file. If only the legacy file exists, save it as `WORK/index.json`: `assemble.py` recognizes it, rewrites every entry with the current keys, prints `LEGACY NEWSSTAND MIGRATED` and adds `config.json` to the files to publish. Publish them all and, if the publishing tool can delete files, remove `edicoes/indice.json` in the same call (past edition pages under `edicoes/` stay where they are).
 
 ## Creating the newsstand (first time only)
 1. Run `assemble.py` without `--index`. It writes `index.html`, `config.json`, `editions/index.json` and today's edition into `WORK/archive/` and prints "NEW NEWSSTAND".
@@ -37,12 +39,12 @@ Then read `config.json` and `editions/index.json` from it into `WORK/config.json
 No artifact tools in this session, or publishing still fails after the retries below: make only the newspaper (SKILL.md, "Only the newspaper"), and tell the reader in one sentence why there is no newsstand. Never publish the newsstand or `config.json` anywhere public to make up for it: both are private.
 
 ## Adding today's edition
-1. Before collecting: list the newsstand's files, note its current version and save `config.json` and `editions/index.json` into WORK.
+1. Before collecting: list the newsstand's files, read its page, note its current version and save `config.json` and `editions/index.json` into WORK. If the list also shows the legacy `edicoes/indice.json` next to `editions/index.json`, note it for step 3.
 2. Run `assemble.py --index WORK/index.json`. A reissue (an entry with today's date already exists) keeps its number; the script handles it.
-3. Publish only the files the script listed, in patch mode, with the version from step 1. If the newsstand's title is not the `NEWSSTAND TITLE` the script printed (an older one called just "Newsstand"), pass that title in the same call so the next search finds it by name.
-4. Publish refused because the artifact was not read first: list the newsstand's files again, then publish once more with the version that listing returns.
+3. Publish exactly the files the script listed (always `index.html`, today's edition and `editions/index.json`), in patch mode, with the version from step 1, `index.html` as the main page. The script rebuilds `index.html` with the title "<newspaper name> · <newsstand label>" (`NEWSSTAND TITLE`), which is what names the artifact; if the tool also takes a title, pass the same one. If step 1 found `edicoes/indice.json` and the tool can delete files (e.g. a `remove` list), remove it in the same call; past edition pages under `edicoes/` stay.
+4. Publish refused because the live page was not read first: read the newsstand page, then publish once more with the version that read returns. Refused as an identical resend: check that the live version is the one you read and publish once more.
 5. Version conflict: read the index again, save it to `WORK/index.json`, rerun `assemble.py` and publish. On the third failure, stop publishing: rerun `assemble.py` with `--standalone`, deliver that page and tell the reader why the newsstand was not updated.
-6. If `index.html` is missing from the newsstand, rerun `assemble.py` with `--with-page`: it adds `index.html` to the files to publish.
+6. `index.html` missing from the newsstand: nothing to do, the script always lists it.
 
 ## The index entry
 Written by `assemble.py`; never edit the index by hand. Each entry has `date`, `number`, `weekday`, `type` ("morning" or "weekend"), `headline`, `summary`, `file`, `extras` (`history`, `did_you_know`: one short line each, so they are not repeated), and for the last 14 editions `titles`, `source_titles` (the titles as collected, before rewriting) and `links`. Collection compares new stories only against those 14 editions, so a recurring subject (a monthly rate decision, a yearly event) is never blocked by an old headline. The index also carries `newspaper`, `founded` and the `labels` the newsstand page uses.

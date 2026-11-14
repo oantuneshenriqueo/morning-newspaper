@@ -384,6 +384,13 @@ def test_junk_titles(collect_module, title, outlet, junk):
     ("Feira volta em dezembro", False),
     ("May sales rise", False),          # "May" is too common an English word to count
     ("Prices fell in March", True),
+    # B3: upcoming months are not old news; a year decides when there is one
+    ("Presidência da FIEMG muda em janeiro de 2027", False),
+    ("Black Friday: vendas de janeiro devem crescer", False),
+    ("Balanço de setembro", True),
+    ("Report for January 2026", True),
+    ("Dados de março de 2025", True),
+    ("Dezembro de 2026 terá feriado", False),
 ])
 def test_other_month(collect_module, title, flagged):
     assert collect_module.other_month(title, dt.date(2026, 11, 13)) is flagged
@@ -452,3 +459,20 @@ def test_unwritable_work_folder_is_a_clear_error(tmp_path, config):
                            "--config", str(cfg), "--work", str(blocker / "work")],
                           capture_output=True, text=True)
     assert proc.returncode == 2 and "ERROR: cannot write" in proc.stdout and "Traceback" not in proc.stderr
+
+
+@pytest.mark.parametrize("title, hit", [
+    ("Copom mantém Selic em 13,75%", True),
+    ("Fed holds rates steady", True),
+    ("Inflação de outubro sobe 0,14%", True),
+    ("Federal court rules on app store", False),
+    ("Feds arrest hackers", False),
+    ("Novo console chega às lojas", False),
+])
+def test_recurring_terms(collect_module, title, hit):
+    """B4: scheduled decisions are republished for days; they get a "recurring?" flag."""
+    assert collect_module.recurring(title) is hit
+
+
+def test_recurring_terms_from_config(collect_module):
+    assert collect_module.recurring("Censo agropecuário divulga dados", ["censo"])

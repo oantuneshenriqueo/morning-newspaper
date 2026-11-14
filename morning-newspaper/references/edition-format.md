@@ -21,6 +21,8 @@ The only text you write per edition, in the reader's language. `scripts/assemble
 
 Rules:
 - `agenda` and `classifieds`: a list (possibly empty) when the connector was read; an empty list prints "free agenda" / "inbox up to date". Leave the key out when Calendar or Gmail is not connected: the box says it is not connected. Connected but failing after a second try: `"agenda_error": "reason in a few words"` (or `"classifieds_error"`; `true` when the reason is unknown): the box says it could not be read and why. In a copy to share (`--share`) a left-out key hides the box instead.
+- `security_alert`: `true` only in a scheduled run that found a security alert email (new sign-in, password change). It adds one neutral line to the classifieds box. In an interactive run tell the reader in the reply instead.
+- The classifieds box is printed every day when Gmail was read, weekends included: an empty list prints "inbox up to date".
 - `history` without a collected `h` ref (fallback search): `{"text": "In 1969, ...", "url": "https://source"}`.
 - Keys under `sections` are the section `id`s from config.json. Missing or empty = the section is not printed.
 - `ref` is a collected ID (`a1`, `b3`, `h2`…). URL, outlet and date are filled in automatically. For a story found outside the collection (fallback search), replace `ref` with `"url": "https://..."` and `"outlet": "Name"`.
@@ -32,4 +34,4 @@ Rules:
 - Sample editions (scheduled run before setup, see `references/sample.md`) are made with `assemble.py --sample`; nothing changes in the JSON.
 - `band` (top strip) is computed; set it only to replace the text. `date` is optional (defaults to the collection date).
 
-The script refuses (and writes nothing) when: a link is missing or not https, an outlet is missing, a `ref` does not exist or is repeated, a quote has 15+ words, there are more stories than `total_news.max`, the headline deck is missing, a section id is not in the config, or a template marker is left in the page. Fix the JSON and run again. Warnings (long titles, few stories) do not block.
+The script refuses (and writes nothing) when: a link is missing or not https, an outlet is missing, a `ref` does not exist or is repeated, a quote has 15+ words, there are more stories than `total_news.max`, the headline deck is missing, a section id is not in the config, or a template marker is left in the page. Fix the JSON and run again. Warnings (long titles, fewer or more stories than the usual range for the day) do not block.

@@ -180,12 +180,39 @@ MONTHS_EN = {m: i for i, m in enumerate(["January", "February", "March", "April"
 
 
 def other_month(title, day):
-    """True if the title names a month that is not this one or a neighbour ("IPCA fecha junho" in
-    November): the story is probably old or republished even though its timestamp is recent."""
-    found = [MONTHS[w] for w in re.findall(r"\w+", (title or "").lower()) if w in MONTHS]
-    found += [MONTHS_EN[w] for w in re.findall(r"\w+", title or "") if w in MONTHS_EN]
-    near = {(day.month - 2) % 12 + 1, day.month, day.month % 12 + 1}
-    return any(m not in near for m in found)
+    """True if the title names a past month that is not this one or the last ("IPCA fecha junho" in
+    November): the story is probably old or republished even though its timestamp is recent.
+    Upcoming months are fine ("presidency from January 2027", "Black Friday in December"): a month
+    with a later year is never flagged, and without a year the next three months count as upcoming."""
+    tokens = re.findall(r"\w+", title or "")
+    for i, tok in enumerate(tokens):
+        m = MONTHS.get(tok.lower()) or MONTHS_EN.get(tok)
+        if not m:
+            continue
+        after = [t for t in tokens[i + 1:i + 3] if t.lower() not in ("de", "del", "of")][:1]
+        year = int(after[0]) if after and re.fullmatch(r"(19|20)\d\d", after[0]) else None
+        if year is not None:
+            back = (day.year - year) * 12 + day.month - m
+        else:
+            back = (day.month - m) % 12
+            if back >= 9:  # one to three months ahead
+                continue
+        if back >= 2:
+            return True
+    return False
+
+
+# Scheduled decisions and figures (rate decisions, inflation, jobs, GDP): outlets republish them
+# for days, and Google News shows the republication date. Readers can add terms with
+# "recurring_terms" in config.json. Whole words, compared without accents.
+RECURRING = ["copom", "selic", "ipca", "inpc", "igp m", "caged", "pnad", "fomc", "fed", "federal reserve",
+             "banxico", "ecb", "bce", "interest rate", "interest rates", "taxa de juros", "tasa de interes",
+             "inflation", "inflacao", "inflacion", "cpi", "payroll", "jobs report", "pib", "gdp"]
+
+
+def recurring(title, extra=()):
+    n = f" {' '.join(words(title))} "
+    return any(f" {p} " in n for p in phrases(RECURRING + list(extra)))
 
 
 def names_city(text, city):
@@ -325,6 +352,8 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
                 flags.append(f"≈{twin}")
             if other_month(it["title"], now.date()):
                 flags.append("old month?")
+            elif recurring(it["title"], cfg.get("recurring_terms") or []):
+                flags.append("recurring?")
             if city and names_city(it["title"], city):
                 flags.append("city")
             if flags:
@@ -505,7 +534,9 @@ def main():
         print("WEATHER: unavailable")
     if any(n.get("flags") for lst in news.values() for n in lst):
         print("FLAGS: ≈a1 = maybe the same fact as a1 (keep one) · old month? = the title names another"
-              " month (likely old news) · city = names the reader's city")
+              " month (likely old news) · recurring? = a scheduled decision or figure (rates, inflation…):"
+              " the date shown may be a republication, confirm the event date before using it"
+              " · city = names the reader's city")
     for sec in cfg["sections"]:
         print(f"\n[{sec['id']}] {sec['title']}")
         for n in news.get(sec["id"], []):

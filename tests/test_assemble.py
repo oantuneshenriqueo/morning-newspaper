@@ -100,11 +100,13 @@ def test_sample_edition(assembler):
     assert "This newspaper has not been set up yet" in assembler.page()
 
 
-def test_existing_newsstand_publishes_only_the_edition(assembler):
+def test_existing_newsstand_publishes_the_edition_and_the_page(assembler):
     old = {"newspaper": "Morning Newspaper", "founded": "2026-11-10",
            "editions": [{"date": "2026-11-12", "number": 3, "headline": "Old", "links": []}]}
     proc = ok(assembler.run(index=old))
-    assert not (proc.archive / "index.html").exists()
+    # The publishing tool needs the main page in every publish: it is always listed, first.
+    listed = re.findall(r"^  (\S+) -> ", proc.stdout, flags=re.M)
+    assert listed == ["index.html", "editions/2026-11-13.html", "editions/index.json"]
     assert not (proc.archive / "config.json").exists()
     idx = assembler.new_index()
     assert [e["number"] for e in idx["editions"]] == [4, 3]
@@ -185,7 +187,6 @@ def test_mixed_keys_are_normalized_without_a_migration(assembler):
         {"data": "2026-11-11", "numero": 1, "manchete": "Old keys", "arquivo": "edicoes/2026-11-11.html"}]}
     proc = ok(assembler.run(index=mixed))
     assert "LEGACY" not in proc.stdout
-    assert not (proc.archive / "index.html").exists()
     eds = assembler.new_index()["editions"]
     assert [e["number"] for e in eds] == [3, 2, 1]
     assert eds[2]["headline"] == "Old keys" and eds[2]["file"] == "edicoes/2026-11-11.html"
@@ -193,7 +194,7 @@ def test_mixed_keys_are_normalized_without_a_migration(assembler):
     assert not any(legacy_keys & set(e) for e in eds)
 
 
-def test_with_page_republishes_the_newsstand_page(assembler):
+def test_with_page_is_still_accepted(assembler):
     old = {"founded": "2026-11-10", "editions": [{"date": "2026-11-12", "number": 1}]}
     proc = ok(assembler.run("--with-page", index=old))
     assert (proc.archive / "index.html").exists()
@@ -393,3 +394,63 @@ def test_failed_gmail_says_why_even_in_a_share_copy(assembler):
     page = standalone_page(assembler)
     assert "Could not read Gmail: access expired, connect again." in page
     assert "Inbox under control" not in page
+
+
+# ---------------------------------------------------------------- report of edition No. 004
+
+def test_newsstand_page_title_names_the_newspaper(assembler):
+    """B2: the static <title> names the artifact, so it must not stay "Newsstand"."""
+    assembler.config["language"] = "pt-BR"
+    assembler.config.setdefault("newspaper", {})["name"] = "O Jornal Matinal"
+    proc = ok(assembler.run(index={"founded": "2026-11-10", "editions": []}))
+    stand = (proc.archive / "index.html").read_text(encoding="utf-8")
+    assert "<title>O Jornal Matinal · Banca</title>" in stand
+    assert "<title>Newsstand</title>" not in stand
+    assert '<html lang="pt-BR">' in stand
+
+
+def test_classifieds_box_stays_on_weekends(assembler):
+    """B1: an empty inbox on a Saturday prints "inbox up to date", like any other day."""
+    assembler.edition["date"] = "2026-11-14"
+    assembler.edition["classifieds"] = []
+    ok(assembler.run())
+    page = assembler.page("2026-11-14")
+    assert 'class="classif"' in page and "Inbox under control" in page
+
+
+def test_security_alert_line(assembler):
+    """B9: a scheduled run sends no message, so the alert gets one neutral line in the paper."""
+    assembler.edition["security_alert"] = True
+    ok(assembler.run())
+    assert "There are security alerts in your inbox" in assembler.page()
+
+
+def test_no_security_line_by_default_or_without_gmail(assembler):
+    ok(assembler.run())
+    assert "security alerts" not in assembler.page()
+    assembler.edition["security_alert"] = True
+    del assembler.edition["classifieds"]
+    ok(assembler.run())
+    assert "security alerts" not in assembler.page()
+
+
+def test_warning_above_the_usual_range(assembler):
+    """B6: more stories than the day's usual range warns (the hard maximum still refuses)."""
+    assembler.edition["date"] = "2026-11-14"
+    assembler.config["total_news"] = {"weekday": [2, 3], "weekend": [2, 3], "max": 10}
+    proc = ok(assembler.run())
+    assert "WARNING:" in proc.stdout and "above the usual 2-3" in proc.stdout
+
+
+def test_legacy_matutina_type_is_normalized(assembler):
+    """B5: "matutina" was written by early versions and must become "morning"."""
+    old = {"founded": "2026-11-10", "editions": [{"date": "2026-11-11", "number": 1, "type": "matutina"}]}
+    ok(assembler.run(index=old))
+    assert assembler.new_index()["editions"][1]["type"] == "morning"
+
+
+def test_index_summary_starts_with_a_capital(assembler):
+    assembler.config["language"] = "pt-BR"
+    assembler.edition["agenda"] = []
+    ok(assembler.run())
+    assert assembler.new_index()["editions"][0]["summary"].startswith("Agenda livre")

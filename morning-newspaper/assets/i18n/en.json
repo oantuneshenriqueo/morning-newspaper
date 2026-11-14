@@ -60,6 +60,7 @@
  "all_day": "All day",
  "classifieds_title": "Classifieds",
  "classifieds_empty": "No classifieds today. Inbox under control.",
+ "security_alert": "There are security alerts in your inbox (a new sign-in or a password change): check them in Gmail.",
  "mail_not_connected": "Gmail is not connected. Connect it to see here the emails waiting for your reply.",
  "mail_failed": "Could not read Gmail: {reason}.",
  "connector_failed": "the connector failed",

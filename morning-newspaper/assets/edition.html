@@ -149,6 +149,9 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <!--EACH:classifieds-->
 <div class="anuncio"><b>{{tag}}</b> {{text}}<!--IF:url--> <a href="{{url}}" target="_blank" rel="noopener">{{in_gmail}}</a><!--/IF:url--></div>
 <!--/EACH:classifieds-->
+<!--IF:security_alert-->
+<div class="anuncio">{{L_security_alert}}</div>
+<!--/IF:security_alert-->
 <!--IF:classifieds_empty-->
 <div class="anuncio">{{L_classifieds_empty}}</div>
 <!--/IF:classifieds_empty-->
