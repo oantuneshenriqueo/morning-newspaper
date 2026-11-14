@@ -133,6 +133,9 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <!--IF:agenda_off-->
 <div class="item-ag"><span>{{L_agenda_not_connected}}</span></div>
 <!--/IF:agenda_off-->
+<!--IF:agenda_failed-->
+<div class="item-ag"><span>{{AGENDA_FAILED}}</span></div>
+<!--/IF:agenda_failed-->
 <!--IF:prep-->
 <div class="prep">{{PREP_NOTE}}</div>
 <!--/IF:prep-->
@@ -152,6 +155,9 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <!--IF:mail_off-->
 <div class="anuncio">{{L_mail_not_connected}}</div>
 <!--/IF:mail_off-->
+<!--IF:mail_failed-->
+<div class="anuncio">{{MAIL_FAILED}}</div>
+<!--/IF:mail_failed-->
 </section>
 <!--/IF:classifieds_block-->
 

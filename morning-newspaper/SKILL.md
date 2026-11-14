@@ -42,8 +42,8 @@ Check which tools this session has before step 1. Only the shell, web search and
 | Missing tool | What happens |
 | --- | --- |
 | Artifact tools (list, read, publish) | **Only the newspaper**, no newsstand (see "Only the newspaper" below). Never publish anywhere public to make up for it. |
-| Google Calendar | The agenda box stays and says that Google Calendar is not connected and that connecting it syncs the agenda. |
-| Gmail | The classifieds box stays and says that Gmail is not connected. |
+| Google Calendar | The agenda box stays and says that Google Calendar is not connected and that connecting it syncs the agenda. Connected but failing twice: the box says it could not be read, and why. |
+| Gmail | The classifieds box stays and says that Gmail is not connected (or, if it failed twice, that it could not be read, and why). |
 | Connector registry | In setup, name the missing connection; there is no button to show. |
 | Multiple-choice question tool | Setup asks in one numbered message (`references/setup.md`). |
 | Scheduled-task tool | No daily schedule: say so in one line if the reader asks for one, and that they can ask for the paper whenever they like. |
@@ -106,7 +106,9 @@ In the same block of calls:
 
 **Secondary stories are not researched:** their 1–2 sentences come from title and summary. One exception: when the title does not name what it is about ("a free city-builder on Steam", "a farming sim announced"), one search only to find that name, at most twice per edition. Not found: leave the story out.
 
-Calendar or Gmail not connected: leave its key out of `edition.json`. The box stays and says the connector is not connected and that connecting it syncs the content, so no extra line in the reply is needed. Never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read. Connected but the call fails: try once more; still failing, leave the key out too.
+Calendar or Gmail never connected: leave its key out of `edition.json`. The box stays and says the connector is not connected and that connecting it syncs the content, so no extra line in the reply is needed.
+
+Connected, but the call fails: try once more. Still failing, set `agenda_error` (or `classifieds_error`) to the reason in a few words in the reader's language (e.g. "o conector não respondeu", "acesso expirado, conecte de novo"; `true` if unknown). The box then says it could not be read and why. Never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read.
 
 ### 3. Select
 

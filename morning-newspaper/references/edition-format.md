@@ -20,7 +20,7 @@ The only text you write per edition, in the reader's language. `scripts/assemble
 ```
 
 Rules:
-- `agenda` and `classifieds`: a list (possibly empty) when the connector was read; an empty list prints "free agenda" / "inbox up to date". Leave the key out when Calendar or Gmail is not connected: the box says it is not connected. In a copy to share (`--share`) a left-out key hides the box instead.
+- `agenda` and `classifieds`: a list (possibly empty) when the connector was read; an empty list prints "free agenda" / "inbox up to date". Leave the key out when Calendar or Gmail is not connected: the box says it is not connected. Connected but failing after a second try: `"agenda_error": "reason in a few words"` (or `"classifieds_error"`; `true` when the reason is unknown): the box says it could not be read and why. In a copy to share (`--share`) a left-out key hides the box instead.
 - `history` without a collected `h` ref (fallback search): `{"text": "In 1969, ...", "url": "https://source"}`.
 - Keys under `sections` are the section `id`s from config.json. Missing or empty = the section is not printed.
 - `ref` is a collected ID (`a1`, `b3`, `h2`…). URL, outlet and date are filled in automatically. For a story found outside the collection (fallback search), replace `ref` with `"url": "https://..."` and `"outlet": "Name"`.

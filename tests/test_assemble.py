@@ -382,3 +382,24 @@ def test_headline_keeps_its_ref_with_the_researched_source(assembler, collected)
     entry = assembler.new_index()["editions"][0]
     first = next(n for lst in collected["news"].values() for n in lst if n["id"] == "a1")
     assert first["title"] in entry["source_titles"]  # the repeat check still knows the story
+
+
+@pytest.mark.parametrize("value, text", [
+    ("the connector did not answer", "Could not read the agenda: the connector did not answer."),
+    (True, "Could not read the agenda: the connector failed."),
+])
+def test_failed_agenda_says_why(assembler, value, text):
+    del assembler.edition["agenda"]
+    assembler.edition["agenda_error"] = value
+    ok(assembler.run())
+    page = assembler.page()
+    assert text in page
+    assert "not connected" not in page.split('class="classif"')[0] and "Free agenda today" not in page
+
+
+def test_failed_gmail_says_why_even_in_a_share_copy(assembler):
+    assembler.edition["classifieds_error"] = "access expired, connect again"
+    ok(assembler.run("--share"))
+    page = standalone_page(assembler)
+    assert "Could not read Gmail: access expired, connect again." in page
+    assert "Inbox under control" not in page

@@ -309,8 +309,18 @@ def main():
     # A list means the connector was read (empty = free day / inbox up to date). A missing key means
     # it is not connected: the box stays, saying so, instead of claiming a free day or an empty inbox.
     # A copy to share (--share) leaves out what was not included, and says so at the top instead.
-    has_agenda = isinstance(ed.get("agenda"), list)
-    has_mail = isinstance(ed.get("classifieds"), list)
+    # "agenda_error" / "classifieds_error": connected, but the calls failed twice. The box stays and
+    # says it could not be read, with the reason (true = no reason known).
+    def failure(key, label):
+        why = ed.get(key)
+        if not why:
+            return ""
+        why = (why if isinstance(why, str) else L["connector_failed"]).strip().rstrip(".")[:120]
+        return L[label].format(reason=why)
+    agenda_failed = failure("agenda_error", "agenda_failed")
+    mail_failed = failure("classifieds_error", "mail_failed")
+    has_agenda = isinstance(ed.get("agenda"), list) and not agenda_failed
+    has_mail = isinstance(ed.get("classifieds"), list) and not mail_failed
     agenda = ed.get("agenda") if has_agenda else []
     classifieds = []
     for i, c in enumerate(ed.get("classifieds") if has_mail else []):
@@ -393,10 +403,14 @@ def main():
         "SVG_HEADLINE": svg(SVG_ICON.get(h.get("icon"), SVG_ICON["newspaper"]), 56),
         "FIRST_LETTER": text_h[:1], "HEADLINE_REST": text_h[1:],
         "URL_HEADLINE": h.get("url", ""), "OUTLET_HEADLINE": h.get("outlet", ""),
-        "agenda_block": has_agenda or not a.share, "agenda_free": has_agenda and not agenda,
-        "agenda_off": not has_agenda and not a.share, "mail_off": not has_mail and not a.share,
+        "agenda_block": has_agenda or bool(agenda_failed) or not a.share, "agenda_free": has_agenda and not agenda,
+        "agenda_off": not (has_agenda or agenda_failed or a.share),
+        "mail_off": not (has_mail or mail_failed or a.share),
+        "agenda_failed": bool(agenda_failed), "AGENDA_FAILED": agenda_failed,
+        "mail_failed": bool(mail_failed), "MAIL_FAILED": mail_failed,
         "prep": bool(ed.get("prep_note")), "PREP_NOTE": ed.get("prep_note", ""),
-        "classifieds_block": (has_mail and (bool(classifieds) or not weekend)) or (not has_mail and not a.share),
+        "classifieds_block": (has_mail and (bool(classifieds) or not weekend)) or bool(mail_failed)
+                             or (not has_mail and not a.share),
         "classifieds_empty": has_mail and not classifieds,
         "SECTIONS_HTML": sections_html(cfg, sections, L), "week": bool(week),
         "extras": bool(hist.get("text") or dyk.get("text")),
