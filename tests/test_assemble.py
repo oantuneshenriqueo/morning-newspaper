@@ -266,13 +266,7 @@ REFUSALS = {
 }
 
 
-TRACEBACK_BUG = pytest.mark.xfail(
-    reason="known bug: assemble.py crashes with a KeyError traceback instead of printing ERROR")
-
-
-@pytest.mark.parametrize("case", [
-    pytest.param(c, marks=TRACEBACK_BUG) if c in ("unknown ref", "missing outlet") else c
-    for c in sorted(REFUSALS)])
+@pytest.mark.parametrize("case", sorted(REFUSALS))
 def test_refuses_bad_edition(assembler, case):
     REFUSALS[case](assembler.edition)
     refused(assembler.run())
@@ -287,30 +281,26 @@ def test_refuses_more_stories_than_the_maximum(assembler):
 # xfail_strict is on: when a bug is fixed, its test starts passing and the suite fails until
 # the @pytest.mark.xfail line is removed.
 
-@pytest.mark.xfail(reason="known bug: the classifieds rule \\d{4,} refuses years such as 2026")
 def test_classified_may_mention_a_year(assembler):
     assembler.edition["classifieds"][0]["text"] = "Ana asked about the 2026 plan."
     ok(assembler.run())
 
 
-@pytest.mark.xfail(reason="known bug: the 15-word quote check ignores single curly quotes ‘…’")
 def test_refuses_long_quote_in_single_quotes(assembler):
     assembler.edition["sections"]["tech"][0]["text"] = f"He said ‘{LONG}’ today."
     refused(assembler.run())
 
 
-@pytest.mark.xfail(reason="known bug: text containing '{{ ... }}' is mistaken for a template leftover")
 def test_story_about_templates_is_accepted(assembler):
     assembler.edition["sections"]["tech"][0]["text"] = "Jinja uses {{ name }} for variables."
     ok(assembler.run())
-    assert "{{ name }}" in assembler.page()
+    assert "{{ name }}" in html.unescape(assembler.page())
 
 
-@pytest.mark.xfail(reason="known bug: '{{MOTTO}}' in reader text is replaced by template data")
 def test_template_markers_in_text_stay_literal(assembler):
     assembler.edition["agenda"][0]["event"] = "Write about {{MOTTO}}"
     ok(assembler.run())
-    assert "Write about {{MOTTO}}" in assembler.page()
+    assert "Write about {{MOTTO}}" in html.unescape(assembler.page())
 
 
 # ---------------------------------------------------------------- copies outside the newsstand (v1.3)

@@ -94,7 +94,14 @@ def roman(n):
 
 
 def esc(v):
-    return html.escape(str(v), quote=True)
+    # Braces too: a story about templates ("{{ name }}") must stay text, never become a marker.
+    return html.escape(str(v), quote=True).replace("{", "&#123;").replace("}", "&#125;")
+
+
+def short(t, limit=140):
+    """Cut at a word boundary, with an ellipsis."""
+    t = " ".join((t or "").split())
+    return t if len(t) <= limit else t[: limit - 1].rsplit(" ", 1)[0].rstrip(",;:") + "…"
 
 
 def word_count(t):
@@ -102,7 +109,7 @@ def word_count(t):
 
 
 def long_quotes(t):
-    return [c for c in re.findall(r"[\"“«]([^\"”»]+)[\"”»]", t or "") if word_count(c) >= 15]
+    return [c for c in re.findall(r"[\"“«‘]([^\"”»’]+)[\"”»’]", t or "") if word_count(c) >= 15]
 
 
 def load_labels(skill, cfg):
@@ -143,9 +150,10 @@ def render(template, ctx, lists):
 
 
 def story_html(n, L, tag):
-    return (f'<{tag} class="display">{esc(n["title"])}</{tag}>\n'
-            f'<p>{esc(n["text"])} <a href="{esc(n["url"])}" target="_blank" rel="noopener">'
-            f'{esc(L["source"])}: {esc(n["outlet"])}</a></p>\n')
+    # .get: a story with a bad ref is already an ERROR; it must not crash before that is printed.
+    return (f'<{tag} class="display">{esc(n.get("title", ""))}</{tag}>\n'
+            f'<p>{esc(n.get("text", ""))} <a href="{esc(n.get("url", ""))}" target="_blank" rel="noopener">'
+            f'{esc(L["source"])}: {esc(n.get("outlet", ""))}</a></p>\n')
 
 
 def sections_html(cfg, sections, L):
@@ -327,7 +335,8 @@ def main():
         c = dict(c)
         if c.get("url") and not str(c["url"]).startswith("https://mail.google.com/"):
             errors.append(f"classifieds[{i}]: link must be https://mail.google.com/...")
-        if re.search(r"\d{4,}|[$€£¥]|R\$", c.get("text", "")):
+        long_numbers = [n for n in re.findall(r"\d{4,}", c.get("text", "")) if not re.fullmatch(r"(19|20)\d\d", n)]
+        if long_numbers or re.search(r"[$€£¥]|R\$", c.get("text", "")):  # a year is fine; codes are not
             errors.append(f"classifieds[{i}]: looks like it contains an amount or a code; remove it")
         c.setdefault("tag", L["wanted_reply"])
         c["in_gmail"] = L["in_gmail"]
@@ -469,8 +478,8 @@ def main():
         "date": day.isoformat(), "number": number, "weekday": L["weekdays"][day.weekday()],
         "type": "sample" if sample else ("weekend" if weekend else "morning"), "headline": h.get("title", ""), "summary": summary_line,
         "file": f"editions/{day.isoformat()}.html",
-        "extras": {"history": hist.get("summary") or hist.get("text", "")[:140],
-                   "did_you_know": dyk.get("summary") or dyk.get("text", "")[:140]},
+        "extras": {"history": hist.get("summary") or short(hist.get("text", "")),
+                   "did_you_know": dyk.get("summary") or short(dyk.get("text", ""))},
         "titles": [n.get("title", "") for n in stories[1:]],
         # The titles as collected (before rewriting): what the next collections are compared against.
         "source_titles": [refs[n["ref"]].get("title", "") for n in stories if n.get("ref") in refs],
