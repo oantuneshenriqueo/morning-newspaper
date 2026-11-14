@@ -416,6 +416,15 @@ def main():
     ap.add_argument("--date", help="YYYY-MM-DD (default: today in the reader's timezone)")
     a = ap.parse_args()
 
+    # Check the working folder before spending a minute on the network.
+    try:
+        os.makedirs(a.work, exist_ok=True)
+        with open(os.path.join(a.work, "collected.json"), "a", encoding="utf-8"):
+            pass
+    except OSError as e:
+        print(f"ERROR: cannot write to the working folder {a.work} ({type(e).__name__}). "
+              "Use a temporary folder (mktemp -d) as WORK; if none can be written, tell the reader.")
+        return 2
     with open(a.config, encoding="utf-8") as f:
         cfg = json.load(f)
     tz = tz_of(cfg)
@@ -459,7 +468,6 @@ def main():
            "did_you_know_used": [s for s in used_didyouknow if s][:30], "failures": failures,
            "network_blocked": blocked,
            "generated_at": now.isoformat(timespec="minutes")}
-    os.makedirs(a.work, exist_ok=True)
     with open(os.path.join(a.work, "collected.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
 

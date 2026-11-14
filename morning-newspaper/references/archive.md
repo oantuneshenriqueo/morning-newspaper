@@ -33,19 +33,15 @@ Then read `config.json` and `editions/index.json` from it into `WORK/config.json
 2. Publish them in one call, from disk, creating the artifact with the title "<newspaper name> · <archive_title label>" (e.g. "Morning Newspaper · Newsstand") and the icon "newspaper".
 3. In an interactive session, tell the reader the newsstand was created and give the slug, to put in the scheduled task prompt.
 
-## Without artifact tools (local newsstand)
-
-Some hosts (another app, an IDE agent) have no artifact tools. Then the newsstand is a folder on disk, `~/newspaper/newsstand/`, with the same files. Never publish it on the web to make up for it: the newsstand and `config.json` are private.
-- **Finding it:** if `~/newspaper/newsstand/editions/index.json` exists, that is the newsstand: copy its `config.json` and `editions/index.json` into WORK, as in step 1. If it does not exist, this is a first run.
-- **Adding the edition:** run `assemble.py` as usual, then copy what it wrote into the folder: `mkdir -p ~/newspaper/newsstand && cp -r WORK/archive/. ~/newspaper/newsstand/` (plain `-r`; some hosts refuse `-a`). Past editions stay, because the script only writes the new files.
-- Tell the reader the folder path, and that `index.html` there opens the newsstand in a browser. If the host's home folder does not survive between sessions, say so in one line: the next session will not find it and would start a new newsstand.
+## When there can be no newsstand
+No artifact tools in this session, or publishing still fails after the retries below: make only the newspaper (SKILL.md, "Only the newspaper"), and tell the reader in one sentence why there is no newsstand. Never publish the newsstand or `config.json` anywhere public to make up for it: both are private.
 
 ## Adding today's edition
 1. Before collecting: list the newsstand's files, note its current version and save `config.json` and `editions/index.json` into WORK.
 2. Run `assemble.py --index WORK/index.json`. A reissue (an entry with today's date already exists) keeps its number; the script handles it.
 3. Publish only the files the script listed, in patch mode, with the version from step 1. If the newsstand's title is not the `NEWSSTAND TITLE` the script printed (an older one called just "Newsstand"), pass that title in the same call so the next search finds it by name.
 4. Publish refused because the artifact was not read first: list the newsstand's files again, then publish once more with the version that listing returns.
-5. Version conflict: read the index again, save it to `WORK/index.json`, rerun `assemble.py` and publish. On the third failure, stop and (if interactive) tell the reader.
+5. Version conflict: read the index again, save it to `WORK/index.json`, rerun `assemble.py` and publish. On the third failure, stop publishing: rerun `assemble.py` with `--standalone`, deliver that page and tell the reader why the newsstand was not updated.
 6. If `index.html` is missing from the newsstand, rerun `assemble.py` with `--with-page`: it adds `index.html` to the files to publish.
 
 ## The index entry

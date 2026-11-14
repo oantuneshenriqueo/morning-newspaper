@@ -409,3 +409,14 @@ def test_reissue_does_not_repeat_the_morning_extras(tmp_path, collect_module, co
     assert out["reissue"] and out["number"] == 3
     assert [h["text"] for h in out["history"]] == ["Lançada a sonda Mariner 9."]
     assert out["did_you_know_used"] == ["hello"]
+
+
+def test_unwritable_work_folder_is_a_clear_error(tmp_path, config):
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    proc = subprocess.run([sys.executable, str(ROOT / "morning-newspaper" / "scripts" / "collect.py"),
+                           "--config", str(cfg), "--work", str(blocker / "work")],
+                          capture_output=True, text=True)
+    assert proc.returncode == 2 and "ERROR: cannot write" in proc.stdout and "Traceback" not in proc.stderr

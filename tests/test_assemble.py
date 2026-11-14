@@ -201,10 +201,28 @@ def test_with_page_republishes_the_newsstand_page(assembler):
     assert not (proc.archive / "config.json").exists()
 
 
-def test_missing_agenda_key_hides_the_box(assembler):
+def test_missing_connectors_keep_the_boxes_with_a_notice(assembler):
     del assembler.edition["agenda"]
+    del assembler.edition["classifieds"]
     ok(assembler.run())
-    assert "Today's Column" not in assembler.page()
+    page = assembler.page()
+    assert 'class="quadro agenda"' in page and 'class="classif"' in page
+    assert "Google Calendar is not connected" in page and "Gmail is not connected" in page
+    assert "Free agenda today" not in page and "Inbox under control" not in page
+
+
+def test_share_copy_hides_the_boxes_it_left_out(assembler):
+    del assembler.edition["agenda"]
+    del assembler.edition["classifieds"]
+    ok(assembler.run("--share"))
+    page = standalone_page(assembler)
+    assert 'class="quadro agenda"' not in page and 'class="classif"' not in page
+    assert "not connected" not in page
+
+
+def test_connected_agenda_has_no_notice(assembler):
+    ok(assembler.run())
+    assert "not connected" not in assembler.page()
 
 
 def test_empty_agenda_prints_free_day(assembler):

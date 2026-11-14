@@ -306,8 +306,9 @@ def main():
     if total < lo:
         warnings.append(f"only {total} stories (usual minimum {lo}); fine if it is a slow day")
 
-    # A missing key (or false) means the connector is not available: hide the box instead of
-    # claiming a free day or an empty inbox. An empty list means connected and nothing to show.
+    # A list means the connector was read (empty = free day / inbox up to date). A missing key means
+    # it is not connected: the box stays, saying so, instead of claiming a free day or an empty inbox.
+    # A copy to share (--share) leaves out what was not included, and says so at the top instead.
     has_agenda = isinstance(ed.get("agenda"), list)
     has_mail = isinstance(ed.get("classifieds"), list)
     agenda = ed.get("agenda") if has_agenda else []
@@ -392,9 +393,11 @@ def main():
         "SVG_HEADLINE": svg(SVG_ICON.get(h.get("icon"), SVG_ICON["newspaper"]), 56),
         "FIRST_LETTER": text_h[:1], "HEADLINE_REST": text_h[1:],
         "URL_HEADLINE": h.get("url", ""), "OUTLET_HEADLINE": h.get("outlet", ""),
-        "agenda_block": has_agenda, "agenda_free": has_agenda and not agenda,
+        "agenda_block": has_agenda or not a.share, "agenda_free": has_agenda and not agenda,
+        "agenda_off": not has_agenda and not a.share, "mail_off": not has_mail and not a.share,
         "prep": bool(ed.get("prep_note")), "PREP_NOTE": ed.get("prep_note", ""),
-        "classifieds_block": has_mail and (bool(classifieds) or not weekend), "classifieds_empty": not classifieds,
+        "classifieds_block": (has_mail and (bool(classifieds) or not weekend)) or (not has_mail and not a.share),
+        "classifieds_empty": has_mail and not classifieds,
         "SECTIONS_HTML": sections_html(cfg, sections, L), "week": bool(week),
         "extras": bool(hist.get("text") or dyk.get("text")),
         "history": bool(hist.get("text")), "HISTORY": hist.get("text", ""),

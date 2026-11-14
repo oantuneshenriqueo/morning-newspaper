@@ -37,14 +37,14 @@ Gathering news, weather and "On this day", building the HTML, updating the newss
 
 ## What the skill needs, and what happens without it
 
-Check which tools this session has before step 1. Only the shell, web search and the file-writing tool are required; everything else degrades on its own:
+Check which tools this session has before step 1. Only the shell, web search and a folder the scripts can write to are required; everything else degrades on its own:
 
 | Missing tool | What happens |
 | --- | --- |
-| Artifact tools (list, read, publish) | **Local newsstand** on disk (`references/archive.md`, "Without artifact tools"). Never publish anywhere public to make up for it. |
-| Google Calendar | No agenda box. One line at the end says which connection would add it. |
-| Gmail | No classifieds box. Same one line. |
-| Connector registry | Name the missing connection in that line; there is no button to show. |
+| Artifact tools (list, read, publish) | **Only the newspaper**, no newsstand (see "Only the newspaper" below). Never publish anywhere public to make up for it. |
+| Google Calendar | The agenda box stays and says that Google Calendar is not connected and that connecting it syncs the agenda. |
+| Gmail | The classifieds box stays and says that Gmail is not connected. |
+| Connector registry | In setup, name the missing connection; there is no button to show. |
 | Multiple-choice question tool | Setup asks in one numbered message (`references/setup.md`). |
 | Scheduled-task tool | No daily schedule: say so in one line if the reader asks for one, and that they can ask for the paper whenever they like. |
 | Playwright with Chromium | No screenshot check. Install nothing. |
@@ -64,18 +64,25 @@ Say in one line that the edition takes a few minutes. In a scheduled run nobody 
 
 Working folder: `~/newspaper/YYYY-MM-DD/`, dated in the reader's timezone (WORK below). Skill folder: SKILL.
 
-### Test or copy to share (not added to the newsstand)
+If `~/newspaper/` cannot be created (read-only home folder), use a new temporary folder (`mktemp -d`) or the current working folder as WORK. If no folder can be written at all, there can be no edition: tell the reader in one sentence that the newspaper could not be printed because this session cannot save files, and stop.
 
-When the reader asks for a test, says "don't publish" or "don't add it to the newsstand", or wants a copy to show other people:
+### Only the newspaper (no newsstand)
+
+The edition is made as a single page, with no newsstand, when:
+- the reader asks only for the newspaper, a test, "don't publish" or "don't add it to the newsstand", or a copy to show other people; or
+- the newsstand cannot be created or reached: this session has no artifact tools, or publishing fails for good (`references/archive.md`).
+
+How:
 - **To show other people** (colleagues, friends, a post): the agenda and the emails are personal, so the reader decides. In an interactive session ask one short question before collecting, with "Leave them out (Recommended)" first and "Include them" second. No answer, or a scheduled run: leave them out. Never decide it silently in either direction.
-- Still find the newsstand (step 1) and read its config and index, **read-only**, so the issue number and the repeat checks are right. Publish nothing and create nothing.
-- In step 5 add `--share` (copy to show) or `--standalone` (test for the reader). The page has no newsstand button, says at the top what was left out (`--share`), and no index is written.
-- Step 6 is skipped; in step 8 send the file the script printed.
+- If there is a newsstand, still find it (step 1) and read its config and index, **read-only**, so the issue number and the repeat checks are right. Publish nothing and create nothing.
+- Without a newsstand and without a config: interactive → the quick start of `references/setup.md` (keep the config in WORK); scheduled → a sample edition (`references/sample.md`).
+- In step 5 add `--share` (copy to show) or `--standalone` (everything else). The page has no newsstand button, says at the top what was left out (`--share`), and no index is written.
+- Step 6 is skipped. In step 8 send the file the script printed and **say in one sentence that no newsstand was created and why**: the reader asked for it; this app has no way to keep a newsstand (no artifact tools); or publishing failed (say the error in plain words).
 
 ### 1. Find the newsstand and the config
 
 Follow `references/archive.md` ("Finding the newsstand"). From it, save `config.json` to `WORK/config.json` and `editions/index.json` to `WORK/index.json`.
-- **No artifact tools in this session:** use the local newsstand (`references/archive.md`, "Without artifact tools").
+- **No artifact tools in this session:** there is no newsstand to find: go to "Only the newspaper" above.
 - **No newsstand or no `config.json`:**
   - Interactive session → run `references/setup.md`, then continue.
   - Scheduled run with a config in the task prompt → use it, and add `--with-config` in step 5 so the newsstand gets its `config.json` (see `references/archive.md`).
@@ -99,7 +106,7 @@ In the same block of calls:
 
 **Secondary stories are not researched:** their 1–2 sentences come from title and summary. One exception: when the title does not name what it is about ("a free city-builder on Steam", "a farming sim announced"), one search only to find that name, at most twice per edition. Not found: leave the story out.
 
-Missing tool or connector: leave its key out of `edition.json` so the box disappears (never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read). In an interactive session, say in one line at the end which connection would help.
+Calendar or Gmail not connected: leave its key out of `edition.json`. The box stays and says the connector is not connected and that connecting it syncs the content, so no extra line in the reply is needed. Never print "free agenda" or "inbox up to date" for a calendar or inbox you could not read. Connected but the call fails: try once more; still failing, leave the key out too.
 
 ### 3. Select
 
@@ -128,7 +135,7 @@ Visual check only in an interactive session and only if Playwright with Chromium
 
 ### 6. Publish to the newsstand
 
-Follow `references/archive.md` ("Adding today's edition", or "Without artifact tools" for a local newsstand). Publish exactly the files `assemble.py` listed, from disk, in patch mode. Test or copy to share: skip this step (see above).
+Follow `references/archive.md` ("Adding today's edition"). Publish exactly the files `assemble.py` listed, from disk, in patch mode. Only the newspaper: skip this step (see above).
 
 ### 7. Final check (what the script cannot see)
 
@@ -141,8 +148,7 @@ Follow `references/archive.md` ("Adding today's edition", or "Without artifact t
 ### 8. Deliver
 
 - First run (just after setup): the summary described at the end of `references/setup.md`.
-- Test or copy to share: send the HTML file the script printed, with one sentence on what was left out.
-- Local newsstand: one sentence with the headline and the folder where the newsstand lives.
+- Only the newspaper: send the HTML file the script printed, with one sentence on why there is no newsstand and, for a copy to share, what was left out.
 - Any other interactive run: one sentence with today's headline, in the reader's language (the artifact card already shows the link). If no scheduled task runs this newspaper (check when the scheduled-task tools can list them), add one short line saying they can ask at any time to get it every morning ("schedule my newspaper").
 - Scheduled run: just publish; send no messages.
 

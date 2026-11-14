@@ -130,6 +130,9 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <!--IF:agenda_free-->
 <div class="item-ag"><span>{{L_agenda_free_line}}</span></div>
 <!--/IF:agenda_free-->
+<!--IF:agenda_off-->
+<div class="item-ag"><span>{{L_agenda_not_connected}}</span></div>
+<!--/IF:agenda_off-->
 <!--IF:prep-->
 <div class="prep">{{PREP_NOTE}}</div>
 <!--/IF:prep-->
@@ -146,6 +149,9 @@ a{color:var(--azul)}a:hover{color:var(--verm)}
 <!--IF:classifieds_empty-->
 <div class="anuncio">{{L_classifieds_empty}}</div>
 <!--/IF:classifieds_empty-->
+<!--IF:mail_off-->
+<div class="anuncio">{{L_mail_not_connected}}</div>
+<!--/IF:mail_off-->
 </section>
 <!--/IF:classifieds_block-->
 
