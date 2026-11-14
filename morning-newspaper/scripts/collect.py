@@ -253,14 +253,65 @@ def google_news_url(query, days, loc):
          "ceid": loc.get("ceid", "US:en")})
 
 
+def _local(tag):
+    """Tag name without its XML namespace ("{namespace}entry" -> "entry")."""
+    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""
+
+
+def _child(el, *names):
+    for c in el:
+        if _local(c.tag) in names:
+            return c
+    return None
+
+
+def _text(el, *names):
+    c = _child(el, *names)
+    return (c.text or "").strip() if c is not None and c.text else ""
+
+
+def _date(txt):
+    """RFC 822 (RSS pubDate) or ISO 8601 (Atom, dc:date)."""
+    if not txt:
+        return None
+    try:
+        when = email.utils.parsedate_to_datetime(txt)
+    except Exception:
+        try:
+            when = dt.datetime.fromisoformat(txt.strip().replace("Z", "+00:00"))
+        except Exception:
+            return None
+    return when if when.tzinfo else when.replace(tzinfo=dt.timezone.utc)
+
+
+def _link(el):
+    for c in el:
+        if _local(c.tag) != "link":
+            continue
+        if c.get("href"):  # Atom: <link href="..." rel="alternate"/>
+            if c.get("rel", "alternate") == "alternate":
+                return c.get("href").strip()
+        elif c.text:
+            return c.text.strip()
+    return ""
+
+
 def read_rss(url):
+    """Reads RSS 2.0, RSS 1.0 (RDF) and Atom feeds. A document with no items at all, or whose items
+    carry no date, raises: the caller reports it in FAILURES instead of silently printing nothing."""
     root = ET.fromstring(fetch(url))
-    items = []
-    for it in root.iter("item"):
-        title = clean(it.findtext("title"), 300)
-        link = (it.findtext("link") or "").strip()
-        src = it.find("source")
-        outlet = (src.text or "").strip() if src is not None else ""
+    entries = [el for el in root.iter() if _local(el.tag) in ("item", "entry")]
+    if not entries and _local(root.tag) not in ("rss", "RDF", "feed"):
+        raise ValueError("not a feed")
+    items, undated = [], 0
+    for it in entries:
+        title = clean(_text(it, "title"), 300)
+        link = _link(it)
+        link = re.sub(r"^http:(?=//)", "https:", link)  # the paper only links https
+        src = _child(it, "source")
+        outlet = ""
+        if src is not None:
+            outlet = (src.text or "").strip() or _text(src, "title")
         if outlet and title.endswith(" - " + outlet):  # Google News appends " - Outlet"
             title = title[: -len(" - " + outlet)]
         if not outlet:
@@ -268,19 +319,16 @@ def read_rss(url):
         title = re.sub(r"\s+[-–—|]\s*$", "", title).strip()  # a trailing " -" left by the outlet
         if junk_title(title, outlet):
             continue
-        when = None
-        if it.findtext("pubDate"):
-            try:
-                when = email.utils.parsedate_to_datetime(it.findtext("pubDate"))
-                if when.tzinfo is None:
-                    when = when.replace(tzinfo=dt.timezone.utc)
-            except Exception:
-                when = None
-        summary = clean(it.findtext("description"), 160)
+        when = _date(_text(it, "pubDate") or _text(it, "date") or _text(it, "published") or _text(it, "updated"))
+        if when is None:
+            undated += 1
+        summary = clean(_text(it, "description") or _text(it, "summary") or _text(it, "content"), 160)
         if summary and same_story(summary, title):
             summary = ""  # Google News descriptions usually repeat the title
         if title and link.startswith("https://"):
             items.append({"title": title, "outlet": outlet, "url": link, "date": when, "summary": summary})
+    if items and undated == len(items):
+        raise ValueError("items without dates")
     return items
 
 
@@ -369,6 +417,10 @@ def icon_from_text(t):
     t = " ".join(words(t))
     if any(k in t for k in ("thunder", "trovoad", "tempestade", "tormenta")):
         return "storm"
+    # Whole words: "neve" must not catch "nevoeiro" (fog).
+    if re.search(r"\b(snow\w*|sleet|hail|ice pellets|freezing (drizzle|rain)|frost|blizzard|neve|nevasca|nevando"
+                 r"|granizo|geada|nieve|nevada|helada|aguanieve|chuva congelada)\b", t):
+        return "snow"
     if any(k in t for k in ("rain", "drizzle", "shower", "chuv", "garoa", "lluvia", "llovizna")):
         return "rain"
     if any(k in t for k in ("partly", "parcial", "poucas nuvens", "parcialmente")):
@@ -382,13 +434,20 @@ def icon_from_text(t):
 WMO = {0: ("Clear sky", "sun"), 1: ("Mainly clear", "sun-cloud"), 2: ("Partly cloudy", "sun-cloud"),
        3: ("Overcast", "cloud"), 45: ("Fog", "cloud"), 48: ("Fog", "cloud"), 51: ("Drizzle", "rain"),
        53: ("Drizzle", "rain"), 55: ("Heavy drizzle", "rain"), 61: ("Light rain", "rain"), 63: ("Rain", "rain"),
-       65: ("Heavy rain", "rain"), 80: ("Rain showers", "rain"), 81: ("Rain showers", "rain"),
+       65: ("Heavy rain", "rain"), 56: ("Freezing drizzle", "snow"), 57: ("Freezing drizzle", "snow"),
+       66: ("Freezing rain", "snow"), 67: ("Freezing rain", "snow"), 71: ("Light snow", "snow"),
+       73: ("Snow", "snow"), 75: ("Heavy snow", "snow"), 77: ("Snow grains", "snow"),
+       85: ("Snow showers", "snow"), 86: ("Snow showers", "snow"), 80: ("Rain showers", "rain"), 81: ("Rain showers", "rain"),
        82: ("Heavy showers", "rain"), 95: ("Thunderstorms", "storm"), 96: ("Thunderstorms with hail", "storm"),
        99: ("Thunderstorms with hail", "storm")}
 
 
 def weather_wttr(city, lang):
-    name = urllib.parse.quote(city["name"].replace(" ", "+"), safe="+")
+    # Coordinates when known: a name alone picks the wrong town when several share it.
+    if "latitude" in city and "longitude" in city:
+        name = f"{float(city['latitude']):.4f},{float(city['longitude']):.4f}"
+    else:
+        name = urllib.parse.quote(city["name"].replace(" ", "+"), safe="+")
     d = json.loads(fetch(f"https://wttr.in/{name}?format=j1&lang={lang}"))
     today = d["weather"][0]
     noon = today["hourly"][min(4, len(today["hourly"]) - 1)]

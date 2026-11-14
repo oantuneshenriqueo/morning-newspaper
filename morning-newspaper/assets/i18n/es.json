@@ -83,6 +83,7 @@
  "archive_empty": "Todavía no hay ediciones en el quiosco.",
  "archive_error": "No se pudo abrir el índice del quiosco ahora.",
  "weekend_tag": "fin de semana",
+ "sample_tag": "muestra",
  "time_format": "{h}:{m}",
  "edition_sample": "Edición de muestra",
  "sample_section": "Edición de muestra",

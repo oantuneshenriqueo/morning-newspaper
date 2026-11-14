@@ -454,3 +454,116 @@ def test_index_summary_starts_with_a_capital(assembler):
     assembler.edition["agenda"] = []
     ok(assembler.run())
     assert assembler.new_index()["editions"][0]["summary"].startswith("Agenda livre")
+
+
+# ---------------------------------------------------------------- medium and low priority fixes
+
+def no_traceback(proc):
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "Traceback" not in proc.stderr and "ERROR:" in proc.stdout
+    assert not proc.archive.exists()
+
+
+def test_headline_as_text_is_an_error(assembler):
+    assembler.edition["headline"] = "Just a sentence"
+    no_traceback(assembler.run())
+
+
+def test_section_story_as_text_is_an_error(assembler):
+    assembler.edition["sections"]["tech"] = ["Just a sentence"]
+    no_traceback(assembler.run())
+
+
+def test_no_date_anywhere_is_an_error(assembler):
+    assembler.collected.pop("date", None)
+    assembler.edition.pop("date", None)
+    proc = assembler.run()
+    no_traceback(proc)
+    assert "no valid date" in proc.stdout
+
+
+def test_index_entry_without_date_is_dropped_with_a_warning(assembler):
+    old = {"founded": "2026-11-10", "editions": [{"number": 1, "headline": "No date"},
+                                                 {"date": "2026-11-12", "number": 2}]}
+    proc = ok(assembler.run(index=old))
+    assert "without a valid date" in proc.stdout
+    assert [e["number"] for e in assembler.new_index()["editions"]] == [3, 2]
+
+
+def test_incomplete_custom_labels_are_an_error(assembler):
+    assembler.config["labels"] = {"weekdays": ["Mon"]}
+    proc = assembler.run()
+    no_traceback(proc)
+    assert "labels.weekdays" in proc.stdout
+
+
+@pytest.mark.parametrize("lang", ["pt-PT", "pt", "es-MX"])
+def test_regional_language_uses_the_close_labels(assembler, lang):
+    assembler.config["language"] = lang
+    ok(assembler.run())
+    page = assembler.page()
+    assert f'<html lang="{lang}">' in page
+    assert ("Sexta-feira" in page) if lang.startswith("pt") else ("Viernes" in page or "viernes" in page)
+
+
+def test_sample_tag_reaches_the_newsstand(assembler):
+    proc = ok(assembler.run("--sample"))
+    assert assembler.new_index()["labels"]["sample_tag"] == "sample"
+    stand = (proc.archive / "index.html").read_text(encoding="utf-8")
+    assert "isSample(ed)" in stand
+
+
+def test_long_words_wrap(assembler):
+    proc = ok(assembler.run())
+    assert "overflow-wrap:anywhere" in assembler.page()
+    assert "overflow-wrap:anywhere" in (proc.archive / "index.html").read_text(encoding="utf-8")
+
+
+def test_drop_cap_keeps_the_opening_quote_with_the_letter(assembler):
+    assembler.edition["headline"]["text"] = "“Atualize já”, disse a empresa. O resto segue."
+    ok(assembler.run())
+    page = assembler.page()
+    assert ">“A<" in page
+    assert ">“<" not in page
+
+
+def test_snow_icon(assembler):
+    assembler.collected["weather"]["icon"] = "snow"
+    ok(assembler.run())
+    assert "M14 31v6M11 34h6" in assembler.page()
+
+
+def test_history_cannot_use_a_news_ref(assembler):
+    assembler.edition["history"] = {"ref": "a2", "text": "In 1990, something."}
+    assembler.edition["sections"]["tech"] = []
+    proc = assembler.run()
+    refused(proc)
+    assert "not an 'On this day' candidate" in proc.stdout
+
+
+def test_did_you_know_needs_its_link(assembler):
+    assembler.edition["did_you_know"] = {"text": "A fact."}
+    proc = assembler.run()
+    refused(proc)
+    assert "did_you_know" in proc.stdout
+
+
+def test_long_quote_in_a_title_is_refused(assembler):
+    assembler.edition["sections"]["tech"][0]["title"] = (
+        "“one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen”")
+    refused(assembler.run())
+
+
+def test_same_fact_twice_warns(assembler):
+    for lst in assembler.collected["news"].values():
+        for n in lst:
+            if n["id"] == "b1":
+                n["same_as"] = "a2"
+    proc = ok(assembler.run())
+    assert "may tell the same fact" in proc.stdout
+
+
+def test_date_before_founding_is_refused(assembler):
+    proc = assembler.run(index={"founded": "2026-12-01", "editions": []})
+    refused(proc)
+    assert "before the newsstand was founded" in proc.stdout

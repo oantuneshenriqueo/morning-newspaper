@@ -45,6 +45,8 @@ def test_same_story(collect_module, a, b, same):
 @pytest.mark.parametrize("text, icon", [
     ("Thunderstorm", "storm"), ("Chuva forte", "rain"), ("Partly cloudy", "sun-cloud"),
     ("Nublado", "cloud"), ("Sunny", "sun"), ("Light drizzle", "rain"), ("Neblina", "cloud"),
+    ("Light snow", "snow"), ("Neve fraca", "snow"), ("Granizo", "snow"), ("Geada", "snow"),
+    ("Nevoeiro", "cloud"), ("Freezing fog", "cloud"), ("Patchy light snow with thunder", "storm"),
 ])
 def test_icon_from_text(collect_module, text, icon):
     assert collect_module.icon_from_text(text) == icon
@@ -63,19 +65,49 @@ def test_read_rss(collect_module, offline):
         ("No source tag", "https://www.site.example/2", 3, None),
         ("Insecure link", "http://site.example/3", 1, None))
     items = collect_module.read_rss("https://feed.example/rss")
-    assert [i["title"] for i in items] == ["Big news", "No source tag"]
+    assert [i["title"] for i in items] == ["Big news", "No source tag", "Insecure link"]
+    assert items[2]["url"] == "https://site.example/3"  # upgraded: the paper only links https
     assert items[0]["outlet"] == "Example Outlet"
     assert items[1]["outlet"] == "site.example"
     assert items[0]["date"] == NOW - dt.timedelta(hours=2)
     assert items[0]["summary"] == ""  # description repeating the title is dropped
 
 
-@pytest.mark.xfail(reason="known bug: Atom feeds (<entry>) come back empty without a FAILURES line")
 def test_read_atom_feed(collect_module, offline):
     offline["atom.example"] = (
         "<?xml version='1.0'?><feed xmlns='http://www.w3.org/2005/Atom'><entry><title>Atom story</title>"
         "<link href='https://atom.example/1'/><updated>2026-11-13T08:00:00Z</updated></entry></feed>")
-    assert collect_module.read_rss("https://atom.example/feed")
+    items = collect_module.read_rss("https://atom.example/feed")
+    assert [(i["title"], i["url"]) for i in items] == [("Atom story", "https://atom.example/1")]
+    assert items[0]["date"] == dt.datetime(2026, 11, 13, 8, tzinfo=dt.timezone.utc)
+
+
+def test_read_rss1_with_dc_date(collect_module, offline):
+    offline["rdf.example"] = (
+        "<?xml version='1.0'?><rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#' "
+        "xmlns='http://purl.org/rss/1.0/' xmlns:dc='http://purl.org/dc/elements/1.1/'>"
+        "<item><title>RDF story here</title><link>https://rdf.example/1</link>"
+        "<dc:date>2026-11-13T09:30:00-03:00</dc:date></item></rdf:RDF>")
+    items = collect_module.read_rss("https://rdf.example/feed")
+    assert items[0]["title"] == "RDF story here"
+    assert items[0]["date"] == dt.datetime(2026, 11, 13, 12, 30, tzinfo=dt.timezone.utc)
+
+
+def test_unreadable_feeds_are_failures(collect_module, offline):
+    offline["page.example"] = "<html><body>not a feed</body></html>"
+    with pytest.raises(ValueError):
+        collect_module.read_rss("https://page.example/")
+    offline["nodate.example"] = rss(("Undated story here", "https://nodate.example/1", None, None))
+    with pytest.raises(ValueError):
+        collect_module.read_rss("https://nodate.example/feed")
+
+
+def test_wttr_uses_coordinates(collect_module, offline, config):
+    """Same-name towns: the forecast is asked by latitude/longitude when the config has them."""
+    offline["wttr.in"] = json.dumps(WTTR)
+    w, _ = collect_module.collect_weather(config)
+    lat, lon = config["city"]["latitude"], config["city"]["longitude"]
+    assert w["url"] == f"https://wttr.in/{float(lat):.4f},{float(lon):.4f}"
 
 
 def test_collect_news_filters_window_repeats_and_duplicates(collect_module, offline, config):

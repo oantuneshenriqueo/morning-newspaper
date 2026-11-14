@@ -10,7 +10,7 @@
 <style>
 :root{--papel:#F2E8D5;--claro:#FBF6EC;--velho:#E9DDC4;--tinta:#1E1B16;--verm:#A8261B;--madeira:#3B2A20}
 *{box-sizing:border-box}
-body{margin:0;background:var(--madeira);color:var(--tinta);font-family:"Crimson Pro",Georgia,serif}
+body{margin:0;background:var(--madeira);color:var(--tinta);font-family:"Crimson Pro",Georgia,serif;overflow-wrap:anywhere}
 .banca{max-width:760px;margin:0 auto;padding:20px 16px 32px}
 .sc{font-family:"Arsenal SC",Georgia,serif;letter-spacing:1px}
 .display{font-family:"Gloock",Georgia,serif;font-weight:400}
@@ -51,7 +51,7 @@ a.edicao:hover,a.edicao:focus-visible{outline:3px solid var(--claro);outline-off
   var L = {
     archive_title: "Newsstand", archive_kicker: "Newspaper stand", archive_subtitle: "Every edition, kept by date",
     latest_edition: "Latest edition", previous_editions: "Past editions", archive_empty: "No editions at the newsstand yet.",
-    archive_error: "Could not open the newsstand index right now.", weekend_tag: "weekend", issue_label: "No.",
+    archive_error: "Could not open the newsstand index right now.", weekend_tag: "weekend", sample_tag: "sample", issue_label: "No.",
     months_short: ["Jan.", "Feb.", "Mar.", "Apr.", "May", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."],
     date_short_format: "{month} {day}, {year}", html_lang: "en"
   };
@@ -71,12 +71,13 @@ a.edicao:hover,a.edicao:focus-visible{outline:3px solid var(--claro);outline-off
   function safe(path) {
     return /^edi(coes|tions)\/\d{4}-\d{2}-\d{2}\.html$/.test(path || "") ? path : "#";
   }
+  function isSample(ed) { return ed.type === "sample" || ed.tipo === "amostra"; }
   function pick(ed, a, b) { return ed[a] != null ? ed[a] : ed[b]; }
   function latestCard(ed) {
     var a = el("a", "edicao hoje");
     a.href = safe(pick(ed, "file", "arquivo"));
     var top = el("div", "topo sc");
-    top.appendChild(el("span", null, L.latest_edition));
+    top.appendChild(el("span", null, L.latest_edition + (isSample(ed) ? " · " + L.sample_tag : "")));
     top.appendChild(el("span", null, num(pick(ed, "number", "numero")) + " · " + dateShort(pick(ed, "date", "data"))));
     a.appendChild(top);
     a.appendChild(el("div", "manchete display", pick(ed, "headline", "manchete")));
@@ -92,7 +93,8 @@ a.edicao:hover,a.edicao:focus-visible{outline:3px solid var(--claro);outline-off
     a.appendChild(el("div", "mini display", name));
     a.appendChild(el("div", "manchete", pick(ed, "headline", "manchete")));
     var weekend = (ed.type === "weekend" || ed.tipo === "fim de semana");
-    a.appendChild(el("div", "num", num(pick(ed, "number", "numero")) + (weekend ? " · " + L.weekend_tag : "")));
+    var tag = isSample(ed) ? L.sample_tag : (weekend ? L.weekend_tag : "");
+    a.appendChild(el("div", "num", num(pick(ed, "number", "numero")) + (tag ? " · " + tag : "")));
     return a;
   }
   function apply(name) {

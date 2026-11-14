@@ -83,6 +83,7 @@
  "archive_empty": "No editions at the newsstand yet.",
  "archive_error": "Could not open the newsstand index right now.",
  "weekend_tag": "weekend",
+ "sample_tag": "sample",
  "time_format": "{h}:{m}",
  "edition_sample": "Sample edition",
  "sample_section": "Sample edition",

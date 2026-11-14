@@ -40,6 +40,7 @@ SVG_WEATHER = {
     "sun-cloud": '<circle cx="17" cy="16" r="9" fill="#C8901E" stroke="#1E1B16" stroke-width="1.5"/><path d="M12 34h22a7 7 0 0 0 0-14 9 9 0 0 0-17 3 6 6 0 0 0-5 11z" fill="#FBF6EC" stroke="#1E1B16" stroke-width="1.5"/>',
     "cloud": '<path d="M9 32h25a8 8 0 0 0 0-16 10 10 0 0 0-19 3 7 7 0 0 0-6 13z" fill="#FBF6EC" stroke="#1E1B16" stroke-width="1.5"/>',
     "rain": f'<path d="M9 26h25a8 8 0 0 0 0-16 10 10 0 0 0-19 3 7 7 0 0 0-6 13z" fill="#FBF6EC" stroke="#1E1B16" stroke-width="1.5"/><path d="M14 31l-2 6M22 31l-2 6M30 31l-2 6" {_S}/>',
+    "snow": f'<path d="M9 26h25a8 8 0 0 0 0-16 10 10 0 0 0-19 3 7 7 0 0 0-6 13z" fill="#FBF6EC" stroke="#1E1B16" stroke-width="1.5"/><path d="M14 31v6M11 34h6M24 31v6M21 34h6M34 31v6M31 34h6" {_S}/>',
     "storm": f'<path d="M9 26h25a8 8 0 0 0 0-16 10 10 0 0 0-19 3 7 7 0 0 0-6 13z" fill="#FBF6EC" stroke="#1E1B16" stroke-width="1.5"/><path d="M23 28l-4 7h5l-3 7" {_S}/>',
 }
 SVG_ICON = {
@@ -118,14 +119,37 @@ def load_labels(skill, cfg):
     folder = os.path.join(skill, "assets", "i18n")
     with open(os.path.join(folder, "en.json"), encoding="utf-8") as f:
         labels = json.load(f)
-    for cand in (lang.split("-")[0], lang):
-        p = os.path.join(folder, f"{cand}.json")
-        if os.path.exists(p):
-            with open(p, encoding="utf-8") as f:
-                labels.update(json.load(f))
+    # Exact file first; otherwise the base language or any regional file of it ("pt-PT" and "pt"
+    # use pt-BR.json): labels in a close variant beat a page in English.
+    base = lang.split("-")[0].lower()
+    files = sorted(n[:-5] for n in os.listdir(folder) if n.endswith(".json"))
+    match = next((c for c in files if c.lower() == lang.lower()), None) \
+        or next((c for c in files if c.lower() == base), None) \
+        or next((c for c in files if c.lower().split("-")[0] == base), None)
+    if match and match != "en":
+        with open(os.path.join(folder, f"{match}.json"), encoding="utf-8") as f:
+            labels.update(json.load(f))
+        if match.lower() != lang.lower():
+            labels["html_lang"] = lang
     labels.update(cfg.get("labels") or {})
     labels.setdefault("html_lang", lang)
     return labels
+
+
+LABEL_LISTS = {"weekdays": 7, "weekdays_short": 7, "months_short": 12}
+
+
+def label_errors(L):
+    out = []
+    for k, n in LABEL_LISTS.items():
+        if not isinstance(L.get(k), list) or len(L[k]) != n or not all(isinstance(x, str) for x in L[k]):
+            out.append(f"labels.{k} must be a list of {n} texts")
+    for k, v in L.items():
+        if k.startswith("_") or k in LABEL_LISTS:
+            continue
+        if not isinstance(v, str):
+            out.append(f"labels.{k} must be a text")
+    return out
 
 
 def render(template, ctx, lists):
@@ -201,6 +225,16 @@ def sections_html(cfg, sections, L):
 
 
 def main():
+    """Any unexpected problem still ends in an ERROR line (nothing written), never a traceback."""
+    try:
+        return build()
+    except Exception as e:  # pragma: no cover - the specific checks below should catch it first
+        print(f"ERROR: could not build the edition ({type(e).__name__}: {str(e)[:160]})")
+        print("Nothing was written. Fix edition.json (or the config/index) and run again.")
+        return 1
+
+
+def build():
     ap = argparse.ArgumentParser()
     ap.add_argument("--skill", required=True)
     ap.add_argument("--config", required=True)
@@ -230,6 +264,12 @@ def main():
     refs = {n["id"]: n for lst in (collected.get("news") or {}).values() for n in lst}
     refs.update({h["id"]: h for h in collected.get("history") or []})
     L = load_labels(a.skill, cfg)
+    bad_labels = label_errors(L)
+    if bad_labels:
+        for e in bad_labels:
+            print("ERROR:", e)
+        print("Nothing was written. Fix the labels in config.json and run again.")
+        return 1
     tz = dt.timezone.utc
     if ZoneInfo:
         try:
@@ -245,14 +285,33 @@ def main():
     old = [normalize_entry(e) for e in (index or {}).get("editions") or (index or {}).get("edicoes") or []]
 
     def d_of(e):
-        return e.get("date")
+        return str(e.get("date") or "")
 
-    day = dt.date.fromisoformat(ed.get("date") or collected.get("date"))
+    undated = [e for e in old if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d_of(e))]
+    if undated:
+        # An entry with no valid date cannot be placed on the shelf: it is dropped, and said so.
+        warnings.append(f"{len(undated)} index entr{'y' if len(undated) == 1 else 'ies'} without a valid date "
+                        "dropped from the index")
+        old = [e for e in old if e not in undated]
+
+    try:
+        day = dt.date.fromisoformat(str(ed.get("date") or collected.get("date") or ""))
+    except ValueError:
+        print("ERROR: no valid date: set \"date\": \"YYYY-MM-DD\" in edition.json, or run collect.py first "
+              "(its collected.json carries the date)")
+        print("Nothing was written. Fix edition.json and run again.")
+        return 1
     previous = [e for e in old if d_of(e) != day.isoformat()]
     existing = next((e for e in old if d_of(e) == day.isoformat()), None)
     number = existing.get("number") if existing and existing.get("number") else \
         max([e.get("number") or 0 for e in previous] + [0]) + 1
-    founded = dt.date.fromisoformat((index or {}).get("founded") or (index or {}).get("fundado_em") or day.isoformat())
+    try:
+        founded = dt.date.fromisoformat((index or {}).get("founded") or (index or {}).get("fundado_em") or day.isoformat())
+    except (TypeError, ValueError):
+        founded = min([dt.date.fromisoformat(d_of(e)) for e in old] + [day])
+    if day < founded and not standalone:
+        errors.append(f"the edition date {day.isoformat()} is before the newsstand was founded "
+                      f"({founded.isoformat()}); check the date")
     year_n = (day.year - founded.year) - ((day.month, day.day) < (founded.month, founded.day)) + 1
     weekend = day.weekday() >= 5
     section_ids = [s["id"] for s in cfg["sections"]]
@@ -260,6 +319,9 @@ def main():
     used = set()
 
     def resolve(item, where):
+        if not isinstance(item, dict):
+            errors.append(f"{where}: must be an object like {{\"ref\": \"a1\", \"title\": \"...\", \"text\": \"...\"}}")
+            return {}
         r = dict(item)
         if r.get("ref"):
             base = refs.get(r["ref"])
@@ -278,7 +340,7 @@ def main():
         for field in ("title", "text"):
             if not (r.get(field) or "").strip():
                 errors.append(f"{where}: missing {field}")
-        for q in long_quotes(r.get("text", "")) + long_quotes(r.get("deck", "")):
+        for q in long_quotes(r.get("title", "")) + long_quotes(r.get("text", "")) + long_quotes(r.get("deck", "")):
             errors.append(f"{where}: quote with 15+ words: “{q[:50]}…”")
         return r
 
@@ -288,6 +350,7 @@ def main():
         h = {}
     else:
         h = resolve(h, "headline")
+    if h:
         if word_count(h.get("title")) > 14:
             warnings.append("headline has more than 14 words")
         if not h.get("deck"):
@@ -303,10 +366,19 @@ def main():
         if sid not in section_ids:
             errors.append(f"section '{sid}' is not in config.json")
             continue
-        sections[sid] = [resolve(n, f"{sid}[{i}]") for i, n in enumerate(items or [])]
+        if not isinstance(items or [], list):
+            errors.append(f"section '{sid}' must be a list of stories")
+            continue
+        sections[sid] = [r for r in (resolve(n, f"{sid}[{i}]") for i, n in enumerate(items or [])) if r]
         for n in sections[sid]:
             if word_count(n.get("title")) > 12:
                 warnings.append(f"{sid}: title over 12 words: {n.get('title', '')[:40]}")
+    # The collection marks stories that may tell the same fact (≈a1): both printed is one fact twice.
+    printed_refs = [n.get("ref") for n in ([h] if h else []) + [x for v in sections.values() for x in v] if n.get("ref")]
+    for r in printed_refs:
+        twin = (refs.get(r) or {}).get("same_as")
+        if twin in printed_refs:
+            warnings.append(f"{r} and {twin} may tell the same fact (≈{twin}): keep only one unless they differ")
     total = (1 if h else 0) + sum(len(v) for v in sections.values())
     limits = cfg.get("total_news") or {}
     if total > limits.get("max", 10):
@@ -356,14 +428,21 @@ def main():
 
     hist = ed.get("history") or {}
     dyk = ed.get("did_you_know") or {}
-    hist = {"text": hist} if isinstance(hist, str) else dict(hist)
-    dyk = {"text": dyk} if isinstance(dyk, str) else dict(dyk)
+    hist = {"text": hist} if isinstance(hist, str) else dict(hist) if isinstance(hist, dict) else {}
+    dyk = {"text": dyk} if isinstance(dyk, str) else dict(dyk) if isinstance(dyk, dict) else {}
+    history_ids = {x["id"] for x in collected.get("history") or [] if isinstance(x, dict) and "id" in x}
     if hist.get("ref"):
         base = refs.get(hist["ref"])
-        if base:
-            hist.setdefault("url", base.get("url", ""))
+        if hist["ref"] not in history_ids:
+            errors.append(f"history: ref {hist['ref']} is not an 'On this day' candidate (h1, h2…)"
+                          if base else f"history: ref {hist['ref']} is not in collected.json")
         else:
-            errors.append(f"history: ref {hist['ref']} is not in collected.json")
+            hist.setdefault("url", base.get("url", ""))
+    if dyk.get("text") and not str(dyk.get("url", "")).startswith("https://"):
+        errors.append("did_you_know: missing the https link of the page that confirmed it (no confirmed page: leave it out)")
+    for where, box in (("history", hist), ("did_you_know", dyk)):
+        for q in long_quotes(box.get("text", "")):
+            errors.append(f"{where}: quote with 15+ words: “{q[:50]}…”")
     week = [{"text": t} for t in (ed.get("week") or [])]
     if week and day.weekday() != 6:
         warnings.append("'week in a cup' is meant for Sundays")
@@ -397,6 +476,9 @@ def main():
                           month=L["months_short"][day.month - 1], year=day.year)
 
     text_h = (h.get("text") or "").strip()
+    # An opening quote or bracket goes into the drop cap with the first letter ("“A…"), never alone.
+    lead = re.match(r"[\"“«‘'(\[]*\w", text_h)
+    first_letter = lead.group(0) if lead else text_h[:1]
     news_name = (cfg.get("newspaper") or {}).get("name") or L["default_newspaper_name"]
     # Who wrote it: "Claude" by default; newspaper.editor names another assistant, "" leaves it out.
     editor = (cfg.get("newspaper") or {}).get("editor", L["default_editor"])
@@ -415,7 +497,7 @@ def main():
         "headline": bool(h), "HEADLINE_SECTION": h_section, "HEADLINE_TITLE": h.get("title", ""),
         "HEADLINE_DECK": h.get("deck", ""),
         "SVG_HEADLINE": svg(SVG_ICON.get(h.get("icon"), SVG_ICON["newspaper"]), 56),
-        "FIRST_LETTER": text_h[:1], "HEADLINE_REST": text_h[1:],
+        "FIRST_LETTER": first_letter, "HEADLINE_REST": text_h[len(first_letter):],
         "URL_HEADLINE": h.get("url", ""), "OUTLET_HEADLINE": h.get("outlet", ""),
         "agenda_block": has_agenda or bool(agenda_failed) or not a.share, "agenda_free": has_agenda and not agenda,
         "agenda_off": not (has_agenda or agenda_failed or a.share),
@@ -495,7 +577,7 @@ def main():
     }
     archive_labels = {k: L[k] for k in ("html_lang", "archive_title", "archive_kicker", "archive_subtitle",
                                         "latest_edition", "previous_editions", "archive_empty", "archive_error",
-                                        "weekend_tag", "issue_label", "months_short", "date_short_format")}
+                                        "weekend_tag", "sample_tag", "issue_label", "months_short", "date_short_format")}
     new = {"newspaper": news_name, "founded": (index or {}).get("founded") or (index or {}).get("fundado_em")
            or day.isoformat(), "labels": archive_labels, "editions": [entry] + previous}
     new["editions"].sort(key=d_of, reverse=True)

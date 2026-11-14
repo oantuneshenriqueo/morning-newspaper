@@ -83,6 +83,7 @@
  "archive_empty": "Nenhuma edição na banca ainda.",
  "archive_error": "Não foi possível abrir o índice da banca agora.",
  "weekend_tag": "fim de semana",
+ "sample_tag": "amostra",
  "time_format": "{h}h{m}",
  "edition_sample": "Edição de amostra",
  "sample_section": "Edição de amostra",
