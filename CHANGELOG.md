@@ -2,6 +2,30 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## v1.4.0 — 2026-11-14
+
+### New
+- **Security alerts in scheduled runs**: a scheduled run sends no messages, so a security alert email (a new sign-in, a password change) used to reach nobody. The classifieds box now prints one neutral line about it, never which account or what happened.
+- **Scheduled decisions are double-checked**: stories about rate decisions and economic figures (Copom, Selic, Fed, inflation, GDP…) are flagged `recurring?`, because outlets republish them for days. Their date is confirmed with one search before they are used. Readers can add terms with `recurring_terms`.
+- **Sample editions are marked at the newsstand** with a red "sample" tag.
+- **Snow icon** for snow, sleet, hail and frost.
+
+### Changed
+- **The classifieds box is there every day**, weekends included: an empty inbox prints "inbox up to date" instead of hiding the box.
+- **"Did you know?" needs its link**: without the page that confirmed the fact, the edition is refused (leave the box out instead). "On this day" only takes its own candidates (`h1`, `h2`…).
+
+### Fixed
+- **Publishing to the newsstand**: the edition is built inside the session's working folder, the newsstand page is read before publishing, and `index.html` always goes along as the main page, so today's edition can never replace the newsstand's cover.
+- **Newsstand name**: the page title is rebuilt as "<newspaper> · <newsstand>" on every edition, so newsstands still called "Newsstand" are renamed.
+- **Old-news detector**: upcoming months ("January 2027") are no longer flagged as old; a year next to the month decides.
+- **Feeds**: Atom, RSS 1.0, `dc:date` dates and `http` links are read. A page that is not a feed, or a feed with no dates, now shows up in `FAILURES` instead of coming back empty.
+- **Weather**: asked by latitude and longitude, so towns that share a name get the right forecast.
+- **Regional languages**: `pt-PT`, `pt`, `es-MX` and similar use the closest shipped labels instead of English.
+- **No more tracebacks**: a headline or story written as plain text, a missing date, index entries without a date and incomplete custom labels now give a clear `ERROR:` or `WARNING:` line.
+- **Long words** (URLs) wrap on phones; the drop cap keeps an opening quote with its letter.
+- **More checks**: 15+ word quotes are also caught in titles and extras; two printed stories marked as the same fact give a warning; more stories than the usual range for the day give a warning; an edition dated before the newsstand was founded is refused.
+- **Legacy newsstands**: the old `matutina` type becomes `morning`, the leftover `edicoes/indice.json` is removed when the publishing tool can delete files, and the index summary starts with a capital letter.
+
 ## v1.3.2 — 2026-11-14
 
 ### Fixed
