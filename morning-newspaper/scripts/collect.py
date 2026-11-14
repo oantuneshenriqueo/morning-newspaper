@@ -38,7 +38,7 @@ try:
 except Exception:  # pragma: no cover
     ZoneInfo = None
 
-UA = "morning-newspaper/1.3.0 (personal newspaper; RSS reader)"
+UA = "morning-newspaper/1.3.1 (personal newspaper; RSS reader)"
 TIMEOUT = 12
 MAX_BYTES = 5_000_000
 # Stories are only compared against the latest editions: a headline from months ago must not
@@ -114,7 +114,8 @@ def same_story(a, b):
 
 # Names a country goes by in different titles ("EUA", "Estados Unidos", "US"): folded into one
 # token before comparing, so the same fact told with a different name is still recognized.
-ALIASES = [(r"\bestados unidos\b|\bunited states\b|\beeuu\b|\bee uu\b|\busa\b|\beua\b", " euaxx "),
+# "USA" only counts in capitals (folded below with "US"): lowercase "usa" is a verb in Portuguese and Spanish.
+ALIASES = [(r"\bestados unidos\b|\bunited states\b|\beeuu\b|\bee uu\b|\beua\b", " euaxx "),
            (r"\breino unido\b|\bunited kingdom\b|\buk\b", " ukxxx "),
            (r"\buniao europeia\b|\bunion europea\b|\beuropean union\b|\bue\b|\beu\b", " uexxx ")]
 # Words every headline uses, which say nothing about which fact it is.
@@ -126,7 +127,7 @@ COMMON = {"para", "apos", "sobre", "como", "mais", "deixa", "anuncia", "lanca", 
 
 def stems(txt):
     """Meaningful words cut to their first 5 letters, so "paralisam" and "paralisação" match."""
-    n = " " + " ".join(words(re.sub(r"\bU\.?S\.?\b", " eua ", txt or ""))) + " "
+    n = " " + " ".join(words(re.sub(r"\bU\.?S\.?(?:A\.?)?(?![\w.])", " eua ", txt or ""))) + " "
     for pat, rep in ALIASES:
         n = re.sub(pat, rep, n)
     return {w[:5] for w in n.split() if (len(w) > 3 and w not in COMMON) or w.isdigit()}

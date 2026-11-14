@@ -2,6 +2,11 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## v1.3.1 — 2026-11-14
+
+### Fixed
+- **"usa" is not the USA**: the Portuguese and Spanish verb "usa" ("Google usa IA") was read as the country when looking for stories that tell the same fact. Now only "USA" in capitals counts (as do "U.S.A.", "US", "EUA" and "Estados Unidos").
+
 ## v1.3.0 — 2026-11-14
 
 ### New

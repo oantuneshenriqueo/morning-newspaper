@@ -336,6 +336,17 @@ def test_related_marks_the_same_fact_in_other_words(collect_module, a, b, hint):
     assert collect_module.related(a, b) is hint
 
 
+@pytest.mark.parametrize("title", ["Tarifas dos EUA sobem", "USA raises tariffs", "U.S. raises tariffs",
+                                   "U.S.A. raises tariffs", "US raises tariffs", "Estados Unidos elevam tarifas"])
+def test_country_names_fold_into_one(collect_module, title):
+    assert "euaxx" in collect_module.stems(title)
+
+
+@pytest.mark.parametrize("title", ["Google usa IA para traduzir", "Banco usa Pix", "Usa o app", "Tell us more"])
+def test_verb_usa_is_not_the_country(collect_module, title):
+    assert "euaxx" not in collect_module.stems(title)
+
+
 @pytest.mark.parametrize("title, outlet, junk", [
     ("- Jornal Panorama", "Jornal Panorama Minas", True),
     ("Jornal Panorama", "Jornal Panorama", True),
