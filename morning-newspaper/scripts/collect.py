@@ -38,7 +38,7 @@ try:
 except Exception:  # pragma: no cover
     ZoneInfo = None
 
-UA = "morning-newspaper/1.3.1 (personal newspaper; RSS reader)"
+UA = "morning-newspaper/1.3.2 (personal newspaper; RSS reader)"
 TIMEOUT = 12
 MAX_BYTES = 5_000_000
 # Stories are only compared against the latest editions: a headline from months ago must not
@@ -114,10 +114,24 @@ def same_story(a, b):
 
 # Names a country goes by in different titles ("EUA", "Estados Unidos", "US"): folded into one
 # token before comparing, so the same fact told with a different name is still recognized.
-# "USA" only counts in capitals (folded below with "US"): lowercase "usa" is a verb in Portuguese and Spanish.
+# Full names and unambiguous short forms match in any case:
 ALIASES = [(r"\bestados unidos\b|\bunited states\b|\beeuu\b|\bee uu\b|\beua\b", " euaxx "),
            (r"\breino unido\b|\bunited kingdom\b|\buk\b", " ukxxx "),
-           (r"\buniao europeia\b|\bunion europea\b|\beuropean union\b|\bue\b|\beu\b", " uexxx ")]
+           (r"\buniao europeia\b|\bunion europea\b|\beuropean union\b", " uexxx ")]
+# Short forms that are also everyday words count only in capitals, and never in an all-caps title:
+# "usa" (verb in Portuguese and Spanish), "us" (English pronoun), "eu" (Portuguese pronoun), "uê".
+# "US$" is the dollar, not the country. In Spanish, "EU" is how Mexican outlets write Estados Unidos.
+CAPS_US = r"\bU\.?S\.?(?:A\.?)?(?![\w.$])"
+CAPS_EU = r"\bEU\b(?!\$)"
+CAPS_UE = r"\bUE\b"
+LANG = None  # reader's language (set in main); only changes what "EU" means
+
+
+def all_caps(txt):
+    letters = [ch for ch in txt or "" if ch.isalpha()]
+    return len(letters) >= 8 and sum(ch.isupper() for ch in letters) / len(letters) > 0.8
+
+
 # Words every headline uses, which say nothing about which fact it is.
 COMMON = {"para", "apos", "sobre", "como", "mais", "deixa", "anuncia", "lanca", "novo", "nova", "novos", "novas",
           "pode", "podem", "sera", "desde", "durante", "contra", "segundo", "entre", "veja", "after", "with",
@@ -127,7 +141,12 @@ COMMON = {"para", "apos", "sobre", "como", "mais", "deixa", "anuncia", "lanca", 
 
 def stems(txt):
     """Meaningful words cut to their first 5 letters, so "paralisam" and "paralisação" match."""
-    n = " " + " ".join(words(re.sub(r"\bU\.?S\.?(?:A\.?)?(?![\w.])", " eua ", txt or ""))) + " "
+    txt = txt or ""
+    if not all_caps(txt):
+        txt = re.sub(CAPS_US, " eua ", txt)
+        txt = re.sub(CAPS_EU, " eua " if (LANG or "").startswith("es") else " uniao europeia ", txt)
+        txt = re.sub(CAPS_UE, " uniao europeia ", txt)
+    n = " " + " ".join(words(txt)) + " "
     for pat, rep in ALIASES:
         n = re.sub(pat, rep, n)
     return {w[:5] for w in n.split() if (len(w) > 3 and w not in COMMON) or w.isdigit()}
@@ -428,6 +447,8 @@ def main():
         return 2
     with open(a.config, encoding="utf-8") as f:
         cfg = json.load(f)
+    global LANG
+    LANG = str(cfg.get("language") or "").lower()
     tz = tz_of(cfg)
     now = dt.datetime.now(tz)
     day = dt.date.fromisoformat(a.date) if a.date else now.date()

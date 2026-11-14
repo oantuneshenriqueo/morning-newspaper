@@ -2,6 +2,12 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## v1.3.2 — 2026-11-14
+
+### Fixed
+- **Everyday words are not countries**: when looking for stories that tell the same fact, the Portuguese pronoun "eu" and the interjection "uê" were read as the European Union, and "US$" (the dollar) and all-caps titles ("TELL US…", "GOOGLE USA IA…") as the United States. Short forms that are also everyday words (US, USA, EU, UE) now count only in capitals, never in an all-caps title, and "US$" is left alone.
+- **Spanish "EU"**: for Spanish readers, "EU" means Estados Unidos, as Mexican outlets write it.
+
 ## v1.3.1 — 2026-11-14
 
 ### Fixed
