@@ -2,6 +2,28 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## v1.3.0 — 2026-11-14
+
+### New
+- **Just the newspaper**: ask for the paper without the newsstand (a test, or a copy to show colleagues) and you get a single page with no newsstand button. A copy to share asks first whether your agenda and emails go in, leaves them out by default and says so at the top. Apps that cannot keep a newsstand (no artifacts) also get just the newspaper, with a line explaining why.
+- **Connection status inside the boxes**: without Google Calendar or Gmail, the agenda and classifieds boxes stay and say the app is not connected. If a connected app fails twice, the box says it could not be read and why.
+- **Afternoon editions** say "Evening edition" in the top band, and the footer credit can name another assistant (`newspaper.editor`).
+
+### Improved
+- **Same fact, different words**: stories that may tell the same fact (also across sections, and "EUA" = "Estados Unidos") are marked so only one is printed.
+- **Old news in disguise**: titles that name another month ("inflation closes June" in November) are flagged.
+- **Small towns**: stories that name your city come first in the local section; empty titles and titles that are just the outlet's name are dropped.
+- **Headline source**: the printed source is the page whose facts were used, and the headline search includes the month and year.
+- **Accuracy**: a sentence-by-sentence check against the sources before publishing (no invented nationalities, comparisons or advice), and "Did you know?" must be confirmed on an opened page.
+- **Weekends and Mondays** look at 3 days of email, like the news.
+- **The newsstand is found by name**: its page is titled "<newspaper> · <newsstand>", and older ones called just "Newsstand" are renamed.
+
+### Fixed
+- An evening reissue no longer repeats the morning's "On this day" and "Did you know?".
+- A test copy no longer writes an index that could replace the morning edition.
+- Text containing `{{ }}` no longer breaks the edition; classifieds accept years like 2026; single curly quotes count for the 15-word quote limit; a bad story reference prints a clear error instead of a crash; index extras are cut at a word boundary.
+- A folder that cannot be written now gives a clear message instead of a crash.
+
 ## v1.2.0 — 2026-11-13
 
 ### New
