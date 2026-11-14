@@ -38,7 +38,7 @@ try:
 except Exception:  # pragma: no cover
     ZoneInfo = None
 
-UA = "morning-newspaper/1.4.0 (personal newspaper; RSS reader)"
+UA = "morning-newspaper/1.4.1 (personal newspaper; RSS reader)"
 TIMEOUT = 12
 MAX_BYTES = 5_000_000
 # Stories are only compared against the latest editions: a headline from months ago must not
@@ -360,6 +360,10 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
     cutoff = now - dt.timedelta(hours=window_h)
     pre = prefixes(cfg["sections"])
     out = {}
+    # Groups of stories that may tell the same fact, across sections. A story joins a group only if
+    # it looks like every story already in it, and is marked with the group's first ID: no chains
+    # (b8≈b7≈b6) that would lump different facts together.
+    groups = []
     for sec in cfg["sections"]:
         sid = sec["id"]
         avoid = phrases(list(cfg.get("avoid") or []) + list(sec.get("avoid") or []))
@@ -393,11 +397,13 @@ def collect_news(cfg, window_h, now, used_links, used_titles, tz):
             n = {"id": f"{pre[sid]}{i}", "title": it["title"], "outlet": it["outlet"], "url": it["url"],
                  "date": it["date"].astimezone(tz).strftime("%Y-%m-%d %H:%M"), "summary": it["summary"]}
             flags = []
-            earlier = [p for lst in out.values() for p in lst] + items  # other sections count too
-            twin = next((p["id"] for p in earlier if related(it["title"], p["title"])), None)
-            if twin:
-                n["same_as"] = twin
-                flags.append(f"≈{twin}")
+            group = next((g for g in groups if all(related(it["title"], m) for m in g["titles"])), None)
+            if group:
+                group["titles"].append(it["title"])
+                n["same_as"] = group["id"]
+                flags.append(f"≈{group['id']}")
+            else:
+                groups.append({"id": n["id"], "titles": [it["title"]]})
             if other_month(it["title"], now.date()):
                 flags.append("old month?")
             elif recurring(it["title"], cfg.get("recurring_terms") or []):

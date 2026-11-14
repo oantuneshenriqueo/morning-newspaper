@@ -508,3 +508,17 @@ def test_recurring_terms(collect_module, title, hit):
 
 def test_recurring_terms_from_config(collect_module):
     assert collect_module.recurring("Censo agropecuário divulga dados", ["censo"])
+
+
+def test_same_fact_groups_do_not_chain(collect_module, offline, config):
+    """A≈B and B≈C must not lump A and C together when A and C are different facts."""
+    config["sections"] = [dict(config["sections"][1], queries=["region"])]
+    offline["news.google.com"] = rss(
+        ("Incêndio atinge fábrica em Divinópolis", "https://n.example/1", 1, "A"),
+        ("Incêndio em fábrica fecha rodovia MG-050", "https://n.example/2", 2, "B"),
+        ("Acidente fecha rodovia MG-050 em Itaúna", "https://n.example/3", 3, "C"))
+    news, _ = collect_module.collect_news(config, 48, NOW, set(), [], UTC)
+    by_title = {n["title"]: n for n in news["local"]}
+    fire = by_title["Incêndio atinge fábrica em Divinópolis"]["id"]
+    assert by_title["Incêndio em fábrica fecha rodovia MG-050"]["same_as"] == fire
+    assert "same_as" not in by_title["Acidente fecha rodovia MG-050 em Itaúna"]

@@ -2,6 +2,11 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## v1.4.1 — 2026-11-14
+
+### Fixed
+- **Same-fact groups no longer chain**: when story B looked like A and C looked like B, all three were marked as one fact, even when A and C were different stories, so a good story could be dropped. A story now joins a group only if it looks like every story already in it, and is marked with the group's first ID.
+
 ## v1.4.0 — 2026-11-14
 
 ### New
