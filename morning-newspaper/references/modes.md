@@ -29,7 +29,7 @@ How:
 - If there is a newsstand, still find it (step 1) and read its config and index, **read-only**, so the issue number and the repeat checks are right. Publish nothing and create nothing.
 - Without a newsstand and without a config: interactive → the quick start of `references/setup.md` (keep the config in WORK); scheduled → a sample edition (`references/sample.md`).
 - In step 5 add `--share` (copy to show) or `--standalone` (everything else). The page has no newsstand button, says at the top what was left out (`--share`), and no index is written.
-- Step 6 is skipped. Steps 7 (sentence-by-sentence check) and the `COVERAGE:` line still apply. In step 8 send the file the script printed and **say in one sentence that no newsstand was created and why**: the reader asked for it; this app has no way to keep a newsstand (no artifact tools); or publishing failed (say the error in plain words).
+- Step 7 is skipped. Step 6 (sentence-by-sentence check) and the `COVERAGE:` line still apply. In step 8 send the file the script printed and **say in one sentence that no newsstand was created and why**: the reader asked for it; this app has no way to keep a newsstand (no artifact tools); or publishing failed (say the error in plain words).
 
 ## No folder to write in
 

@@ -296,6 +296,50 @@ ATTRIBUTION = {"segundo", "conforme", "according", "segun", "informa", "informou
                "relatam", "reportam", "informam", "noticiam", "noticiou", "veiculos", "sites",
                "imprensa", "relatos", "outlets", "media", "report", "reporting", "medios", "reportan",
                "informan", "informaron", "publicam", "publicou", "dizem", "afirmam"}
+# Plural attributions ("outlets report…", "sites relatam…"): fair only when several collected
+# candidates carry the fact (marked ≈ by the collection). One outlet is named instead ("Segundo o
+# Pplware, …"): edition No. 011 wrote "Sites relatam" for a story only Pplware carried.
+PLURAL_ATTRIBUTION = {"relatam", "reportam", "informam", "noticiam", "veiculos", "sites", "relatos",
+                      "outlets", "report", "reportan", "informan", "informaron", "publicam", "dizem",
+                      "afirmam", "medios"}
+# Month names, so a date taken from the story's own publication date ("on Friday, November 20")
+# does not count as a word or number the source lacks.
+MONTH_NAMES = [("janeiro", "enero", "January"), ("fevereiro", "febrero", "February"), ("março", "marzo", "March"),
+               ("abril", "abril", "April"), ("maio", "mayo", "May"), ("junho", "junio", "June"),
+               ("julho", "julio", "July"), ("agosto", "agosto", "August"), ("setembro", "septiembre", "September"),
+               ("outubro", "octubre", "October"), ("novembro", "noviembre", "November"),
+               ("dezembro", "diciembre", "December")]
+
+
+def date_words(when):
+    """The day, month and year of a collected date ("2026-11-20 10:45") as source text: the day and
+    month the story came out are known, so printing them is not a fact from memory. The hour is not
+    included (a "10" or "45" elsewhere in the text still gets a CHECK)."""
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", str(when or ""))
+    if not m:
+        return ""
+    year, month, day = m.group(1), int(m.group(2)), int(m.group(3))
+    if not 1 <= month <= 12:
+        return ""
+    return " ".join([str(day), f"{day:02d}", str(month), f"{month:02d}", year, *MONTH_NAMES[month - 1]])
+
+
+def overstated_attribution(written, base, refs):
+    """A plural attribution ("sites relatam…") for a story only one collected outlet carries."""
+    words = set(re.findall(r"[a-z]+", _fold(" ".join(w for w in written if w))))
+    if not words & PLURAL_ATTRIBUTION or not base.get("id"):
+        return None
+    group = base.get("same_as") or base["id"]
+    outlets = {_fold(n.get("outlet") or "") for n in refs.values()
+               if n.get("id") == group or n.get("same_as") == group}
+    outlets.discard("")
+    if len(outlets) > 1:
+        return None
+    name = base.get("outlet") or "the outlet"
+    return (f"plural attribution, but only {name} carries this story: name it (\"Segundo o {name}, …\", in "
+            "the reader's language) instead of \"outlets report…\"")
+
+
 # Other names of a country the source names by its short form ("EUA" in the title, "Estados Unidos"
 # in the text). Short forms are matched in capitals only ("us" and "eu" are also everyday words).
 COUNTRY_NAMES = [(r"\b(?:EUA|EEUU|EE\. ?UU|USA)\b|\bU\.S\.|\bUS\b(?!\$)", r"estados unidos|united states",
@@ -312,7 +356,7 @@ def with_country_names(source):
 
 
 def unsupported(written, source, empty_summary):
-    """What step 7 must look at in one printed item: names and numbers the collected text does not
+    """What step 6 must look at in one printed item: names and numbers the collected text does not
     carry, a hedge the source had and the text dropped and, when the summary was empty (only the
     title backs the story), longer words that are not in the title. A hint, never a block: a
     paraphrase is fine, a fact added from memory is not."""
@@ -1180,7 +1224,7 @@ def build():
         if len(re.findall(rf"<{tag}[\s>]", page)) != page.count(f"</{tag}>"):
             errors.append(f"unbalanced <{tag}> tags in page")
 
-    # What step 7 should look at first: printed names, numbers and hedges the collected text does not
+    # What step 6 should look at first: printed names, numbers and hedges the collected text does not
     # back. A headline with its own researched page is checked by the model against that page.
     CHECKS.clear()
     ECHOES.clear()
@@ -1203,6 +1247,8 @@ def build():
             continue
         # The outlet counts as source text: "Segundo o BPMoney" names where the fact came from.
         source = " ".join(str(base.get(k) or "") for k in ("year", "title", "summary", "text", "extract", "outlet"))
+        if "id" in base:
+            source += " " + date_words(base.get("date"))
         written = [str(item.get(k) or "") for k in ("title", "deck", "text")]
         title_only = "id" in base and not (base.get("summary") or base.get("text") or base.get("extract"))
         if item.get("brief"):
@@ -1211,7 +1257,9 @@ def build():
             ECHOES.append(f"{where}" + (f" ({item['ref']})" if item.get("ref") and item["ref"] != where else "")
                           + ": the text only restates the title; tell what the collected summary adds "
                             "(who, where, when, how many, what happens next), or set \"brief\": true")
-        for note in unsupported(written, source, title_only):
+        notes = unsupported(written, source, title_only)
+        plural = overstated_attribution(written, base, refs) if "id" in base else None
+        for note in notes + ([plural] if plural else []):
             CHECKS.append(f"{where}" + (f" ({item['ref']})" if item.get("ref") and item["ref"] != where else "")
                           + f": {note}")
 
@@ -1381,17 +1429,17 @@ def next_steps(single, standalone=False):
         print("CHECK:", c)
     if CHECKS:
         print("  Each CHECK names words the collected text does not carry. Keep them only if they are a "
-              "paraphrase or come from the page you opened for the headline; otherwise remove them (step 7). "
+              "paraphrase or come from the page you opened for the headline; otherwise remove them (step 6). "
               "A CHECK is a hint, not a score: never remove an attribution (\"outlets report…\") or a hedge "
               "to clear one.")
     print("NEXT (mandatory, in order):")
+    print("  6. Check every sentence against what backs it (collected title and summary, a page you opened, "
+          "the Wikipedia text); remove what is not there, and rerun this script if anything changed.")
     if standalone:
-        print("  6. Nothing to publish: send the file above to the reader, with one sentence on why there is "
+        print("  7. Nothing to publish: send the file above to the reader, with one sentence on why there is "
               "no newsstand (references/modes.md).")
     else:
-        print("  6. Publish exactly the file" + ("" if single else "s") + " above, nothing else.")
-    print("  7. Check every sentence against what backs it (collected title and summary, a page you opened, "
-          "the Wikipedia text); remove what is not there, then rerun and republish if anything changed.")
+        print("  7. Then publish exactly the file" + ("" if single else "s") + " above, nothing else.")
     print("  8. Reply with the edition summary (SKILL.md step 8): at most 4 lines, in the reader's language, "
           "built from the OK and COVERAGE lines above (never from the plan), no process, sources, network "
           "or script details.")

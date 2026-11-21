@@ -318,6 +318,13 @@ ALIASES = [(r"\bestados unidos\b|\bunited states\b|\beeuu\b|\bee uu\b|\beua\b", 
 CAPS_US = r"\bU\.?S\.?(?:A\.?)?(?![\w.$])"
 CAPS_EU = r"\bEU\b(?!\$)"
 CAPS_UE = r"\bUE\b"
+# "IA"/"AI" is how most titles write "inteligência artificial": in capitals only ("ia" is also a verb
+# in Portuguese, "ai" an interjection). Edition No. 011 printed "Gigante chinesa apresenta novo modelo
+# de IA…" five days after "Alibaba lança novo modelo de inteligência artificial…" with no printed? flag.
+CAPS_AI = r"\b(?:IA|AI|I\.A\.|A\.I\.)(?![\w.])"
+TOPIC_ALIASES = [(r"\binteligencia artificial\b|\bartificial intelligence\b", " iaxxx ")]
+# "cibersegurança", "ciberataque", "cyberattack": the same subject as "segurança", "ataque", "attack".
+CYBER = r"^(?:ciber|cyber)(?=[a-z]{4})"
 LANG = None  # reader's language (set in main); only changes what "EU" means
 
 
@@ -334,14 +341,17 @@ COMMON = {"para", "apos", "sobre", "como", "mais", "deixa", "anuncia", "lanca", 
 
 
 def stems(txt):
-    """Meaningful words cut to their first 5 letters, so "paralisam" and "paralisação" match."""
+    """Meaningful words cut to their first 5 letters, so "paralisam" and "paralisação" match. Other names
+    of one country or subject ("EUA"/"Estados Unidos", "IA"/"inteligência artificial", "cibersegurança"/
+    "segurança") are folded into one token first."""
     txt = txt or ""
     if not all_caps(txt):
         txt = re.sub(CAPS_US, " eua ", txt)
         txt = re.sub(CAPS_EU, " eua " if (LANG or "").startswith("es") else " uniao europeia ", txt)
         txt = re.sub(CAPS_UE, " uniao europeia ", txt)
-    n = " " + " ".join(words(txt)) + " "
-    for pat, rep in ALIASES:
+        txt = re.sub(CAPS_AI, " iaxxx ", txt)
+    n = " " + " ".join(re.sub(CYBER, "", w) for w in words(txt)) + " "
+    for pat, rep in ALIASES + TOPIC_ALIASES:
         n = re.sub(pat, rep, n)
     return {w[:5] for w in n.split() if (len(w) > 3 and w not in COMMON) or w.isdigit()}
 

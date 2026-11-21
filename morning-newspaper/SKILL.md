@@ -15,8 +15,8 @@ A personal newspaper delivered every morning, readable in five minutes with a co
 3. Pick the stories.
 4. Write `WORK/edition.json` (the essentials are in step 4 below).
 5. Run `assemble.py`; fix any `ERROR:`.
-6. Publish exactly the files it listed.
-7. Check every sentence against its source.
+6. Check every sentence against its source; rerun `assemble.py` if anything changed.
+7. Publish exactly the files it listed.
 8. Reply with the edition summary, and nothing else.
 
 Gathering, building the HTML, the index and the mechanical checks are done by the scripts: you read a compact summary, choose, write a short JSON and publish. The details of each step are below; read other files only when the table says so.
@@ -30,15 +30,15 @@ These are where editions have gone wrong. Each one is a requirement, not advice:
 1. **Every printed fact has a source you can point to:** the collected title and summary, a search result's own title and snippet, a page you opened, or the Wikipedia text. The search tool's own written answer or summary of the results is not a source, and neither is memory.
 2. **Never guess a date** and never decide on your own what the script should filter: give it everything and let it apply the window and the repeat checks.
 3. **Only the searches and pages the steps name.** No extra rounds "to reinforce" a section. The whole budget: the headline's research for **one** story (step 2), at most two `recurring?` checks, at most two name-finding searches, and the fallbacks when a source failed. Never search a second headline candidate or a secondary story to confirm it.
-4. **Step 7 always runs**, sentence by sentence, before the reply.
+4. **Step 6 always runs**, sentence by sentence, before publishing and before the reply.
 5. **The final reply is the step 8 summary and nothing else**: no process, sources, network, script or newsstand details, and the Attention line names accounts only (no date, place or device).
-6. **`KEEP:` from `assemble.py` means stop**: never publish over a fuller edition without the reader's yes (step 6).
+6. **`KEEP:` from `assemble.py` means stop**: never publish over a fuller edition without the reader's yes (step 7).
 
 ## When to read what
 
 | Situation | Read |
 | --- | --- |
-| Steps 1 and 6: finding and publishing to the newsstand or the single page | `references/archive.md` |
+| Steps 1 and 7: finding and publishing to the newsstand or the single page | `references/archive.md` |
 | Step 4: only for a field or case the essentials there do not cover, or an `ERROR:` you cannot fix from its message | `references/writing.md`, `references/edition-format.md` |
 | A tool is missing, or the reader wants only the newspaper, a test or a copy to share | `references/modes.md` |
 | The collection printed `NETWORK BLOCKED` | `references/no-network.md` |
@@ -99,7 +99,7 @@ In the same block of calls:
 
 **Extra research for the headline (one story only):** choose the headline first (step 3, "Headline"), then research that story alone: one web search with its title plus the current month and year (collected links are Google News redirects that page fetchers cannot open). If the results are older than the date window or are about something else (another case, another institution), search once more in the more thorough search mode, when the tool has one, with the full name of who the story is about instead of an acronym. If the research shows that the fact itself came out before the date window (an official page or the first reports are older), the story is left out of the edition, and the next story in the headline order becomes the headline **without any new search**: its text says only what its collected title and summary say, in up to 3 sentences (as many as they back, at least one), with no `url` or `outlet`. Otherwise open the best result's page: only what that page says can be added to the headline beyond the collected title and summary (rule 1). If that page does not open, open the next result's page, once. If none opens, the headline text says only what the collected title, summary and result snippets say, in fewer sentences. Keep the headline's `ref` and add the `url` and `outlet` of the page whose facts you used, so the printed source is the one behind the numbers (`references/edition-format.md`). That page is then the only source the paper prints: a fact that only the collected title or summary carries (who asked for the update, a country, a number) is attributed in the text to the collected outlet ("Segundo a Tek Notícias, …", in the reader's language), or left out. `assemble.py` reminds you with a `CHECK:` until the text names it.
 
-**Secondary stories are not researched:** their 1–2 sentences come from title and summary, even when only a small outlet carries them (then "outlets report…", step 3). One exception: when the title does not name what it is about ("a free city-builder on Steam", "a farming sim announced"), or, in a section whose `interest` names a genre, which genre the game is, one search only to find that out, at most twice per edition. Not found: leave the story out.
+**Secondary stories are not researched:** their 1–2 sentences come from title and summary, even when only a small outlet carries them (then attributed to it, step 3). One exception: when the title does not name what it is about ("a free city-builder on Steam", "a farming sim announced"), or, in a section whose `interest` names a genre, which genre the game is, one search only to find that out, at most twice per edition. Not found: leave the story out.
 
 Calendar or Gmail never connected: leave its key out of `edition.json`. The box stays and says the connector is not connected and that connecting it syncs the content; the edition summary adds one **Missing** line (step 8).
 
@@ -123,7 +123,7 @@ Use each section's `interest` and `count` from the config:
 - Drop gossip, sponsored content, small-company press releases and news from other regions that does not affect the reader. A local story from another state stays out even when its subject is general (a police warning about scams in another town): it is news there, not here.
 - Headline, chosen before any search: the story most relevant to the reader today (affects what they do, use or decide), among those with a summary whenever one is close in relevance. Between close candidates, prefer in this order: one with a summary; one with no `earlier?`, `printed?`, `old month?` or `recurring?` flag; one from a newsroom with its own reporting (a national or regional outlet, not an aggregator, promotion site or blog). This order is also the fallback order when step 2 drops the headline.
 - A section with nothing good is left out. Never pad with weak or invented stories. Rule 1 drops facts, rarely whole stories: a story that cannot be confirmed further is told only as its collected title and summary say. No story at all passes: leave `headline` and `sections` out; the edition still comes out (agenda, classifieds, weather, extras) with a short "no confirmed news today" note in place of the headline. The local section first gets one more search for the region (a neighbouring town, or the region with its state) and is left out only if that brings nothing either.
-- Unverifiable claims (only small outlets, nothing confirms it) are written as "outlets report…", or left out. That attribution stays through every rewrite: shortening a text for a `CHECK:` or a word limit never removes it (`assemble.py` warns when a later run drops it).
+- Unverifiable claims (only small outlets, nothing confirms it) are attributed, or left out: one outlet is named ("Segundo o Pplware, …"); "outlets report…" only when several collected candidates carry the fact (marked ≈). A plural for one outlet overstates it (`CHECK:` warns). That attribution stays through every rewrite: shortening a text for a `CHECK:` or a word limit never removes it (`assemble.py` warns when a later run drops it).
 - "On this day": pick one `h` (it comes from Wikipedia, which counts as confirmation).
 - "Did you know?": pick one `k` (Wikipedia articles on today's theme, sometimes in English: write it in the reader's language; their text counts as confirmation) and tell one lesser-known, concrete fact from its text, in 1–2 sentences. Not a definition, and never these overused classics: the moth "first bug", Ada Lovelace as first programmer, QWERTY made to slow typists, the first email or website, "640K", the wooden first mouse, Apollo's computer vs a phone, the origin of "spam". No `k` holds such a fact (or none came): `references/extras.md`.
 
@@ -159,27 +159,31 @@ Write `WORK/edition.json` with the file-writing tool (fix it later with the file
 - `KEYWORDS:` → what happened to the keyword proposal (applied, undone or ignored and why). Applied or undone: `config.json` is in the files to publish. Ignored: leave it; never retry it in the same run.
 - `BRIEFS:` → title-only stories the script moved to the "In brief" column. Nothing to fix.
 - `ECHO:` → a text that only restates its title. Rewrite it with what the summary adds, or make it a brief; then run again before publishing.
-- `CHECK:` → words in a printed item (names, numbers, a dropped hedge, or, when only the title backs a story, longer words that are not in it) that the collected text does not carry. Step 7 starts with these. A `CHECK:` is a hint, not a score to bring to zero: a paraphrase may stay, and an attribution or hedge never goes to clear one.
+- `CHECK:` → words in a printed item (names, numbers, a dropped hedge, or, when only the title backs a story, longer words that are not in it) that the collected text does not carry. Step 6 starts with these. A `CHECK:` is a hint, not a score to bring to zero: a paraphrase may stay, and an attribution or hedge never goes to clear one.
 - **Never cut the output** (`| head`, `| tail`, `grep`): it is short, and every line matters. Read it whole, every run.
 - `OK:` → prints the files to publish (`as` -> path) and a `COVERAGE:` line: how many stories, which sections have them and which came out empty. Step 8 is written from these lines.
 - Both scripts append their command and output to `WORK/run.log` by themselves. Do not read it or send it; it is there only for a debug report the reader asks for.
 
 Visual check only in an interactive session and only if Playwright with Chromium is already installed: a screenshot at 390 px. Install nothing, and do not fall back to another browser (a system browser can hang the session).
 
-### 6. Publish to the newsstand
+### 6. Final check, before publishing (what the script cannot see)
 
-Follow `references/archive.md` ("Adding today's edition"). Publish exactly the files `assemble.py` listed, from disk, in patch mode.
+`KEEP:` instead of `OK:`: nothing was written, so there is nothing to check; go to step 7.
 
-`KEEP:` instead of `OK:` means today's edition is already published with more stories than this reissue, and nothing was written. Scheduled run: publish nothing, and the reply is the normal summary of the published edition. Interactive run: ask the reader in one line whether to replace it; only on a yes, rerun with `--replace` and publish. Single page: publish the one file it printed ("Single page" in `references/archive.md`). Only the newspaper: skip this step (`references/modes.md`).
-
-### 7. Final check (what the script cannot see)
 
 - The agenda matches the calendar (times in the reader's timezone).
 - No email the reader already answered appears as pending.
-- First every `CHECK:` line: keep the word only if it paraphrases the source or comes from the page opened for the headline; otherwise remove it, and put back a hedge the source had. Never remove "outlets report…" or "Segundo o …" to clear a `CHECK:`.
+- First every `CHECK:` line: keep the word only if it paraphrases the source or comes from the page opened for the headline; otherwise remove it, and put back a hedge the source had. Never remove an attribution ("Segundo o …", "outlets report…") to clear a `CHECK:`; a `CHECK:` about a plural attribution is fixed by naming the outlet, never by dropping the attribution.
 - **Sentence by sentence**, compare every written sentence (titles, deck, texts, both extras) with what backs it: the collected title and summary, the headline's search, the Wikipedia text or the "Did you know?" page. Remove any name, nationality, number, date, comparison ("faster than the previous ones"), adjective ("initial problems") or consequence ("proof that…") that is not there. A deck tells a consequence the sources state (or, without one, the main fact the title leaves out), never advice or an order to the reader ("should watch out for scams").
 - One item, one `ref`: never mix facts from two collected stories into one text.
 - Everything paraphrased.
+- Anything changed: run `assemble.py` again before publishing, so what goes out is the checked text and the newsstand is published only once.
+
+### 7. Publish to the newsstand
+
+Follow `references/archive.md` ("Adding today's edition"). Publish exactly the files the last `assemble.py` run listed, from disk, in patch mode.
+
+`KEEP:` instead of `OK:` means today's edition is already published with more stories than this reissue, and nothing was written. Scheduled run: publish nothing, and the reply is the normal summary of the published edition. Interactive run: ask the reader in one line whether to replace it; only on a yes, rerun with `--replace` and publish. Single page: publish the one file it printed ("Single page" in `references/archive.md`). Only the newspaper: skip this step (`references/modes.md`).
 
 ### 8. Deliver
 

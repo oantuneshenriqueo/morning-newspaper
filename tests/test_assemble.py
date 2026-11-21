@@ -804,14 +804,14 @@ def test_coverage_with_every_section_filled(assembler):
 def test_every_mode_prints_coverage_and_next_steps(assembler, mode):
     proc = ok(assembler.run(mode))
     assert "COVERAGE:" in proc.stdout
-    assert "7. Check every sentence" in proc.stdout
+    assert "6. Check every sentence" in proc.stdout
     assert "8. Reply with the edition summary" in proc.stdout
 
 
 def test_standalone_next_steps_say_send_not_publish(assembler):
     proc = ok(assembler.run("--standalone"))
     assert "Nothing to publish: send the file" in proc.stdout
-    assert "6. Publish exactly" not in proc.stdout
+    assert "publish exactly" not in proc.stdout
 
 
 def test_run_log_keeps_the_real_output(assembler):

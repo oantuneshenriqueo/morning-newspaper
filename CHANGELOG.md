@@ -2,6 +2,17 @@
 
 All notable changes to Morning Newspaper. Each release on GitHub uses the matching section below as its notes.
 
+## Unreleased
+
+### Fixed
+From the debug report of scheduled edition No. 011.
+- **A fact already printed came back told with other names.** "Gigante chinesa apresenta novo modelo de IA… reforço na segurança" passed without `printed?` five days after "Alibaba lança novo modelo de inteligência artificial… reforço da cibersegurança". The repeat hints now fold "IA"/"AI" (in capitals only, since "ia" is also a verb) with "inteligência artificial"/"artificial intelligence", and drop the "ciber"/"cyber" prefix ("cibersegurança" ≈ "segurança", "cyberattack" ≈ "attack"). Only hints change (`printed?`, `≈`, `earlier?`); what the script drops on its own does not.
+- **The story's own date counted as a number not in the source.** "na sexta-feira, 20 de novembro" taken from the collected date got `CHECK: numbers not in the source: 20`. The day, month (number and name) and year of a candidate's date now count as source text; its hour does not.
+- **"Sites relatam" for a story only one outlet carried.** A plural attribution ("outlets report…", "sites relatam…") on a story no other collected candidate carries (no `≈`) now gets a `CHECK:` asking to name the outlet ("Segundo o Pplware, …"). SKILL.md says the same.
+
+### Changed
+- **The final check comes before publishing.** Steps 6 and 7 swapped: check every sentence (and rerun `assemble.py` if a text changed), then publish once. Before, the edition was published and then checked, which meant publishing twice whenever the check changed a word. `assemble.py`'s `NEXT` lines follow the new order.
+
 ## v1.13.0 — 2026-11-21
 
 From the debug report of scheduled edition No. 010: the story texts had become the headline reworded, because most candidates come from Google News searches, which send no summary.
